@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Products
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <h4>Products</h4>
+
+        <a href="/product/add" class="btn btn-primary">
+            Add Product
+        </a>
+
+    </div>
+
+    <table class="table table-hover">
+
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Product</th>
+                <th>Code</th>
+                <th>Category</th>
+                <th>Sale Price</th>
+                <th>Stock</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for item in products %}
+
+            <tr>
+
+                <td>{{ item.id }}</td>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.product_code }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.sale_price }}</td>
+                <td>{{ item.stock_qty }}</td>
+
+                <td>
+
+                    <a href="/product/edit/{{ item.id }}" class="btn btn-warning btn-sm">
+                        Edit
+                    </a>
+
+                    <a href="/product/delete/{{ item.id }}" class="btn btn-danger btn-sm"
+                        onclick="return confirm('Delete Product?')">
+                        Delete
+                    </a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

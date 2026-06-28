@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/sales.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="purchase-page">
+
+    <!-- Header -->
+
+    <div class="purchase-header">
+
+        <div>
+            <h1>Sales Management</h1>
+            <p>Manage Sales Invoices & Customer Orders</p>
+        </div>
+
+        <a href="/sales/add" class="btn-add">
+            + Add Sales
+        </a>
+
+    </div>
+
+    <!-- Statistics -->
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3>Total Sales</h3>
+            <h2>{{ sale_count or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Total Amount</h3>
+            <h2>₹ {{ sale_amount or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Customers</h3>
+            <h2>{{ customer_count or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Today Sales</h3>
+            <h2>₹ {{ today_sales or 0 }}</h2>
+        </div>
+
+    </div>
+
+    <!-- Filter -->
+
+    <div class="filter-card">
+
+        <form method="get" action="/sales">
+
+            <div class="filter-group">
+
+                <div>
+                    <label>From Date</label>
+                    <input type="date" name="from_date" value="{{ from_date }}">
+                </div>
+
+                <div>
+                    <label>To Date</label>
+                    <input type="date" name="to_date" value="{{ to_date }}">
+                </div>
+
+                <div>
+                    <button type="submit" class="btn-search">
+                        Search
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- Sales Table -->
+
+    <div class="table-card">
+
+        <table class="purchase-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Grand Total</th>
+                    <th width="340">Actions</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for row in sales %}
+
+                <tr>
+
+                    <td>
+                        {{ row.invoice_number }}
+                    </td>
+
+                    <td>
+                        {{ row.sale_date }}
+                    </td>
+
+                    <td>
+                        {{ row.customer_name }}
+                    </td>
+
+                    <td>
+                        ₹ {{ row.grand_total }}
+                    </td>
+
+                    <td class="action-buttons">
+
+                        <a href="/sales/invoice/{{ row.id }}" target="_blank" class="btn-view">
+                            View
+                        </a>
+
+                        <a href="/sales/invoice/{{ row.id }}?print=1" target="_blank" class="btn-print">
+                            Print
+                        </a>
+
+                        <a href="/sales/edit/{{ row.id }}" class="btn-edit">
+                            ✏ Edit
+                        </a>
+
+                        <a href="/sales/delete/{{ row.id }}" class="btn-delete"
+                            onclick="return confirm('Delete this Sale?')">
+                            🗑 Delete
+                        </a>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

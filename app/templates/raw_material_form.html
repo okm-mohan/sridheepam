@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Add Raw Material
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <h4 class="mb-4">
+        Add Raw Material
+    </h4>
+
+    <form method="post"
+          action="/raw-material/save">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+
+                <label>Material Name</label>
+
+                <input
+                    type="text"
+                    name="material_name"
+                    class="form-control"
+                    required>
+
+            </div>
+
+            <div class="col-md-6 mb-3">
+
+                <label>Unit</label>
+
+                <select
+                    name="unit"
+                    class="form-control">
+
+                    <option>KG</option>
+                    <option>LTR</option>
+                    <option>PCS</option>
+
+                </select>
+
+            </div>
+
+            <div class="col-md-4 mb-3">
+
+                <label>Purchase Price</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="purchase_price"
+                    class="form-control">
+
+            </div>
+
+            <div class="col-md-4 mb-3">
+
+                <label>Opening Stock</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="stock_qty"
+                    class="form-control">
+
+            </div>
+
+            <div class="col-md-4 mb-3">
+
+                <label>Minimum Stock</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="minimum_stock"
+                    class="form-control">
+
+            </div>
+
+            <div class="col-md-4 mb-3">
+
+                <label>GST %</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="gst_percent"
+                    class="form-control">
+
+            </div>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-success">
+
+            Save Material
+
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

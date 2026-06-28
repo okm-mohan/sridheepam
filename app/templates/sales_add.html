@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/sales_add.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="purchase-add-page">
+
+    <div class="page-header">
+
+        <div>
+            <h1>Sales Entry</h1>
+            <p>Create New Sales Invoice</p>
+        </div>
+
+        <a href="/sales" class="btn-back">
+            Back
+        </a>
+
+    </div>
+
+    <form method="post" action="/sales/save">
+
+        <!-- Header -->
+
+        <div class="glass-card">
+
+            <div class="form-grid">
+
+                <div>
+                    <label>Invoice Number</label>
+                    <input
+                        type="text"
+                        name="invoice_number"
+                        value="{{ invoice_number }}"
+                        readonly
+                    >
+                </div>
+
+                <div>
+                    <label>Sales Date</label>
+                    <input
+                        type="date"
+                        name="sale_date"
+                        value="{{ today }}"
+                        required
+                    >
+                </div>
+
+                <div>
+
+                    <label>Customer</label>
+
+                    <select
+                        name="customer_id"
+                        required
+                    >
+
+                        <option value="">
+                            Select Customer
+                        </option>
+
+                        {% for c in customers %}
+
+                        <option value="{{ c.id }}">
+                            {{ c.customer_name }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Items -->
+
+        <div class="glass-card">
+
+            <div class="item-header">
+
+                <h3>Sales Items</h3>
+
+                <button
+                    type="button"
+                    class="btn-add-row"
+                    onclick="addRow()"
+                >
+                    + Add Row
+                </button>
+
+            </div>
+
+            <table id="salesTable">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Rate</th>
+                        <th>GST %</th>
+                        <th>GST Amt</th>
+                        <th>Total</th>
+                        <th></th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="salesBody">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Totals -->
+
+        <div class="glass-card totals-card">
+
+            <div class="total-row">
+                <span>Sub Total</span>
+                <span id="subTotal">₹ 0.00</span>
+            </div>
+
+            <div class="total-row">
+                <span>GST Total</span>
+                <span id="gstTotal">₹ 0.00</span>
+            </div>
+
+            <div class="total-row grand">
+                <span>Grand Total</span>
+                <span id="grandTotal">₹ 0.00</span>
+            </div>
+
+            <button
+                type="submit"
+                class="btn-save"
+            >
+                Save Sales
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+
+let productsOptions = `
+{% for p in products %}
+<option
+    value="{{ p.id }}"
+    data-rate="{{ p.sale_price }}"
+    data-gst="{{ p.gst_percent }}"
+    data-stock="{{ p.stock_qty }}"
+>
+{{ p.product_name }}
+</option>
+{% endfor %}
+`;
+
+</script>
+
+<script src="/static/js/sales_add.js"></script>
+
+{% endblock %}

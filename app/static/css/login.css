@@ -1,0 +1,288 @@
+/* ===========================
+   Sridheepam ERP Login
+=========================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+}
+
+body{
+    background:linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);
+    min-height:100vh;
+    overflow:hidden;
+}
+
+.login-page{
+    display:flex;
+    width:100%;
+    height:100vh;
+}
+
+/* ===========================
+   LEFT PANEL
+=========================== */
+
+.login-left{
+    width:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#fff;
+    padding:70px;
+}
+
+.brand{
+    max-width:520px;
+}
+
+.logo{
+    width:100px;
+    height:100px;
+    border-radius:50%;
+    background:#ffffff20;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:42px;
+    margin-bottom:30px;
+    backdrop-filter:blur(10px);
+    box-shadow:0 15px 35px rgba(0,0,0,.25);
+}
+
+.brand h1{
+    font-size:48px;
+    margin-bottom:12px;
+    font-weight:700;
+}
+
+.brand p{
+    font-size:20px;
+    opacity:.9;
+    margin-bottom:35px;
+    line-height:32px;
+}
+
+.features{
+    list-style:none;
+}
+
+.features li{
+    font-size:18px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.features i{
+    color:#00ff99;
+    font-size:20px;
+}
+
+/* ===========================
+   RIGHT PANEL
+=========================== */
+
+.login-right{
+    width:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#f5f7fb;
+}
+
+.login-card{
+    width:430px;
+    background:#fff;
+    border-radius:22px;
+    padding:45px;
+    box-shadow:0 25px 60px rgba(0,0,0,.18);
+}
+
+.login-card h2{
+    text-align:center;
+    color:#1e293b;
+    font-size:34px;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#64748b;
+    margin-bottom:35px;
+    font-size:16px;
+}
+
+/* ===========================
+   INPUTS
+=========================== */
+
+.input-group{
+    margin-bottom:25px;
+}
+
+.input-group label{
+    display:block;
+    margin-bottom:8px;
+    color:#334155;
+    font-weight:600;
+    font-size:15px;
+}
+
+.input-box{
+    position:relative;
+}
+
+.input-box i:first-child{
+    position:absolute;
+    left:18px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#64748b;
+    font-size:17px;
+}
+
+.input-box input{
+    width:100%;
+    height:55px;
+    border:1px solid #dbe4f0;
+    border-radius:12px;
+    padding-left:50px;
+    padding-right:50px;
+    font-size:16px;
+    transition:.3s;
+    outline:none;
+    background:#fff;
+}
+
+.input-box input:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 4px rgba(37,99,235,.15);
+}
+
+.toggle-password{
+    position:absolute;
+    right:18px;
+    top:50%;
+    transform:translateY(-50%);
+    cursor:pointer;
+    color:#64748b;
+    font-size:17px;
+}
+
+/* ===========================
+   OPTIONS
+=========================== */
+
+.options{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:28px;
+}
+
+.remember{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#475569;
+    font-size:15px;
+}
+
+.remember input{
+    width:17px;
+    height:17px;
+    cursor:pointer;
+}
+
+.forgot{
+    text-decoration:none;
+    color:#2563eb;
+    font-weight:600;
+}
+
+.forgot:hover{
+    text-decoration:underline;
+}
+
+/* ===========================
+   BUTTON
+=========================== */
+
+.login-btn{
+    width:100%;
+    height:55px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(90deg,#2563eb,#1d4ed8);
+    color:#fff;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:12px;
+}
+
+.login-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 30px rgba(37,99,235,.35);
+}
+
+.login-btn:active{
+    transform:scale(.98);
+}
+
+/* ===========================
+   FOOTER
+=========================== */
+
+.footer{
+    text-align:center;
+    margin-top:30px;
+    color:#94a3b8;
+    font-size:14px;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+@media(max-width:1000px){
+
+    .login-left{
+        display:none;
+    }
+
+    .login-right{
+        width:100%;
+        padding:20px;
+    }
+
+    .login-card{
+        width:100%;
+        max-width:450px;
+    }
+
+}
+
+@media(max-width:500px){
+
+    .login-card{
+        padding:30px;
+    }
+
+    .login-card h2{
+        font-size:28px;
+    }
+
+    .login-btn{
+        font-size:16px;
+    }
+
+}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Suppliers
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <h4>Suppliers</h4>
+
+        <a href="/supplier/add"
+           class="btn btn-primary">
+            Add Supplier
+        </a>
+
+    </div>
+
+    <table class="table table-hover">
+
+        <thead>
+
+            <tr>
+                <th>ID</th>
+                <th>Supplier</th>
+                <th>Company</th>
+                <th>Mobile</th>
+                <th>GST</th>
+                <th>Action</th>
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+        {% for item in suppliers %}
+
+        <tr>
+
+            <td>{{ item.id }}</td>
+            <td>{{ item.supplier_name }}</td>
+            <td>{{ item.company_name }}</td>
+            <td>{{ item.mobile }}</td>
+            <td>{{ item.gst_number }}</td>
+
+            <td>
+
+              <a href="/supplier/edit/{{ item.id }}"
+   class="btn btn-warning btn-sm">
+   Edit
+</a>
+
+                <a href="/supplier/delete/{{ item.id }}"
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete Supplier?')">
+                    Delete
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

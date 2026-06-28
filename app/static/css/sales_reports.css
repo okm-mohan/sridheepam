@@ -1,0 +1,179 @@
+/* ===========================
+   SALES REPORT
+=========================== */
+
+.card{
+    border-radius:12px;
+}
+
+.card-header{
+    background:#fff;
+    border-bottom:1px solid #e5e7eb;
+}
+
+.card-header h4{
+    font-size:24px;
+    font-weight:700;
+    color:#1f2937;
+}
+
+.form-label{
+    font-weight:600;
+    color:#374151;
+}
+
+.form-control,
+.form-select{
+    border-radius:8px;
+    height:42px;
+    font-size:15px;
+}
+
+.btn{
+    height:42px;
+    border-radius:8px;
+    font-weight:600;
+}
+
+/* ===========================
+   SUMMARY CARDS
+=========================== */
+
+.summary-card{
+    border-radius:12px;
+    color:#fff;
+    padding:20px;
+    box-shadow:0 6px 16px rgba(0,0,0,.12);
+    transition:.3s;
+}
+
+.summary-card:hover{
+    transform:translateY(-3px);
+}
+
+.summary-blue{
+    background:linear-gradient(135deg,#2563eb,#1d4ed8);
+}
+
+.summary-green{
+    background:linear-gradient(135deg,#16a34a,#15803d);
+}
+
+.summary-card h6{
+    font-size:15px;
+    margin-bottom:10px;
+    font-weight:600;
+}
+
+.summary-card h2{
+    font-size:32px;
+    font-weight:700;
+    margin:0;
+}
+
+/* ===========================
+   TABLE
+=========================== */
+
+.table{
+    margin-bottom:0;
+}
+
+.table thead th{
+
+    background:#212529;
+    color:#fff;
+
+    text-align:center;
+    vertical-align:middle;
+
+    font-size:14px;
+
+    white-space:nowrap;
+
+}
+
+.table tbody td{
+
+    vertical-align:middle;
+    font-size:14px;
+
+}
+
+.table tbody tr:hover{
+
+    background:#eef6ff;
+
+}
+
+.table td.text-end{
+
+    font-weight:600;
+
+}
+
+.table a{
+
+    color:#0d6efd;
+    text-decoration:none;
+    font-weight:600;
+
+}
+
+.table a:hover{
+
+    color:#dc3545;
+    text-decoration:underline;
+
+}
+
+/* ===========================
+   PRINT
+=========================== */
+
+@media print{
+
+.sidebar,
+.topbar,
+.btn,
+form{
+    display:none !important;
+}
+
+.content-area{
+    margin:0;
+    padding:0;
+}
+
+.card{
+    border:none;
+    box-shadow:none;
+}
+
+}
+
+/* ===========================
+   MOBILE
+=========================== */
+
+@media(max-width:768px){
+
+.summary-card{
+
+    margin-bottom:15px;
+
+}
+
+.card-header h4{
+
+    font-size:20px;
+
+}
+
+.table{
+
+    font-size:13px;
+
+}
+
+}

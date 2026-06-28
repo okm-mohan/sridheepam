@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/purchase_add.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="purchase-add-page">
+
+    <div class="page-header">
+        <div>
+            <h1>Purchase Entry</h1>
+            <p>Create New Purchase Invoice</p>
+        </div>
+
+        <a href="/purchase" class="btn-back">
+            Back
+        </a>
+    </div>
+
+    <form method="post" action="/purchase/update">
+
+        <div class="glass-card">
+
+            <div class="form-grid">
+
+                <div>
+                    <label>Purchase No</label>
+                    <input type="text" name="purchase_no" value="{{ purchase.purchase_no }}" readonly>
+                </div>
+
+                <input type="hidden" name="purchase_id" value="{{ purchase.purchase_id }}">
+
+                <input type="text" name="purchase_no" value="{{ purchase.purchase_no }}" readonly>
+
+                <div>
+                    <label>Purchase Date</label>
+                    <input type="date" name="purchase_date" value="{{ purchase.purchase_date }}" required>
+                </div>
+
+                <div>
+                    <label>Supplier</label>
+
+                    <select name="supplier_id" required>
+
+                        {% for s in suppliers %}
+                        <option value="{{ s.id }}" {% if s.id==purchase.supplier_id %} selected {% endif %}>
+                            {{ s.supplier_name }}
+                        </option>
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div>
+                    <label>Invoice No</label>
+                    <input type="text" name="invoice_no" value="{{ purchase.invoice_no }}">
+                </div>
+
+                <div>
+                    <label>Invoice Date</label>
+                    <input type="date" name="invoice_date" value="{{ purchase.invoice_date }}">
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Item Grid -->
+
+        <div class="glass-card">
+
+            <div class="item-header">
+
+                <h3>Purchase Items</h3>
+
+                <button type="button" class="btn-add-row" onclick="addRow()">
+                    + Add Row
+                </button>
+
+            </div>
+
+            <table id="purchaseTable">
+
+                <thead>
+
+                    <tr>
+                        <th>Material</th>
+                        <th>Qty</th>
+                        <th>Rate</th>
+                        <th>GST %</th>
+                        <th>GST Amt</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="purchaseBody">
+
+                    {% for item in items %}
+
+                    <tr>
+
+                        <td>
+                            <select name="material_id" required>
+
+                                {% for m in materials %}
+                                <option value="{{ m.id }}" {% if m.id==item.material_id %} selected {% endif %}>
+                                    {{ m.material_name }}
+                                </option>
+                                {% endfor %}
+
+                            </select>
+                        </td>
+
+                        <td>
+                            <input type="number" name="qty" value="{{ item.quantity }}" step="0.001"
+                                onkeyup="calculateRow(this)" onchange="calculateRow(this)">
+                        </td>
+
+                        <td>
+                            <input type="number" name="rate" value="{{ item.unit_price }}" step="0.01"
+                                onkeyup="calculateRow(this)" onchange="calculateRow(this)">
+                        </td>
+
+                        <td>
+                            <input type="number" name="gst_percent" value="{{ item.gst_percent }}" step="0.01"
+                                onkeyup="calculateRow(this)" onchange="calculateRow(this)">
+                        </td>
+
+                        <td>
+                            <input type="number" name="gst_amount" value="{{ item.gst_amount }}" readonly>
+                        </td>
+
+                        <td>
+                            <input type="number" name="line_total" value="{{ item.line_total }}" readonly>
+                        </td>
+
+                        <td>
+                            <button type="button" class="btn-remove" onclick="removeRow(this)">
+                                X
+                            </button>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Totals -->
+
+        <div class="glass-card totals-card">
+
+            <div class="total-row">
+                <span>Sub Total</span>
+                <span id="subTotal">0.00</span>
+            </div>
+
+            <div class="total-row">
+                <span>GST Total</span>
+                <span id="gstTotal">0.00</span>
+            </div>
+
+            <div class="total-row grand">
+                <span>Grand Total</span>
+                <span id="grandTotal">0.00</span>
+            </div>
+
+            <button type="submit" class="btn-save">
+                Save Purchase
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+
+    let materialsOptions = `
+{% for m in materials %}
+<option value="{{ m.id }}">
+    {{ m.material_name }}
+</option>
+{% endfor %}
+`;
+
+</script>
+
+<script src="/static/js/purchase_add.js"></script>
+
+{% endblock %}

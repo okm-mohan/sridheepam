@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Purchase Report
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/purchase_reports.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white">
+        <h4 class="mb-0">
+            <i class="bi bi-file-earmark-text"></i>
+            Date Wise Purchase Report
+        </h4>
+    </div>
+
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-lg-2">
+                    <label class="form-label fw-bold">
+                        From Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="from_date"
+                        value="{{ from_date }}"
+                        class="form-control">
+                </div>
+
+                <div class="col-lg-2">
+                    <label class="form-label fw-bold">
+                        To Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="to_date"
+                        value="{{ to_date }}"
+                        class="form-control">
+                </div>
+
+                <div class="col-lg-4">
+                    <label class="form-label fw-bold">
+                        Supplier
+                    </label>
+
+                    <select
+                        name="supplier_id"
+                        class="form-select">
+
+                        <option value="0">
+                            ALL Suppliers
+                        </option>
+
+                        {% for supplier in suppliers %}
+
+                        <option
+                            value="{{ supplier.id }}"
+                            {% if supplier.id == supplier_id %}selected{% endif %}>
+
+                            {{ supplier.supplier_name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button
+                        class="btn btn-primary">
+
+                        <i class="bi bi-search"></i>
+
+                        Search
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button
+                        type="button"
+                        onclick="window.print()"
+                        class="btn btn-success">
+
+                        <i class="bi bi-printer"></i>
+
+                        Print
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+        <hr>
+
+        <div class="row mb-4">
+
+            <div class="col-md-3">
+
+                <div class="card text-center bg-primary text-white">
+
+                    <div class="card-body">
+
+                        <h6>Total Purchases</h6>
+
+                        <h2>
+
+                            {{ purchase_count }}
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="card text-center bg-success text-white">
+
+                    <div class="card-body">
+
+                        <h6>Total Purchase Amount</h6>
+
+                        <h2>
+
+                            ₹ {{ "{:,.2f}".format(purchase_amount) }}
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover table-striped align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+
+                        <th width="60">S.No</th>
+
+                        <th>Purchase No</th>
+
+                        <th>Date</th>
+
+                        <th>Supplier</th>
+
+                        <th>Invoice No</th>
+
+                        <th class="text-end">
+                            Items
+                        </th>
+
+                        <th class="text-end">
+                            Qty
+                        </th>
+
+                        <th class="text-end">
+                            GST
+                        </th>
+
+                        <th class="text-end">
+                            Grand Total
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for row in report %}
+
+                    <tr>
+
+                        <td>
+                            {{ loop.index }}
+                        </td>
+
+                        <td>
+
+                            <a href="/purchase/edit/{{ row.purchase_id }}">
+
+                                {{ row.purchase_no }}
+
+                            </a>
+
+                        </td>
+
+                        <td>
+
+                            {{ row.purchase_date }}
+
+                        </td>
+
+                        <td>
+
+                            {{ row.supplier_name }}
+
+                        </td>
+
+                        <td>
+
+                            {{ row.invoice_no }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ row.total_items }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ row.total_qty }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.2f"|format(row.gst_amount or 0) }}
+
+                        </td>
+
+                        <td class="text-end fw-bold text-success">
+
+                            {{ "%.2f"|format(row.grand_total or 0) }}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/purchase_reports.js"></script>
+{% endblock %}

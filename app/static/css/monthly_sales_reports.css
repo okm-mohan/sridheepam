@@ -1,0 +1,226 @@
+/* ==========================================
+            MONTHLY SALES REPORT
+========================================== */
+
+.card{
+    border-radius:12px;
+    border:none;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+}
+
+.card-header{
+    background:#fff;
+    border-bottom:1px solid #e9ecef;
+}
+
+.card-header h4{
+    font-size:24px;
+    font-weight:700;
+    color:#212529;
+}
+
+/* ==========================================
+                FILTER
+========================================== */
+
+.form-label{
+    font-weight:600;
+    color:#495057;
+}
+
+.form-control,
+.form-select{
+    height:42px;
+    border-radius:8px;
+}
+
+.btn{
+    height:42px;
+    border-radius:8px;
+    font-weight:600;
+}
+
+/* ==========================================
+            SUMMARY CARDS
+========================================== */
+
+.summary-card{
+
+    color:#fff;
+
+    padding:20px;
+
+    border-radius:12px;
+
+    box-shadow:0 6px 16px rgba(0,0,0,.15);
+
+    transition:.3s;
+
+}
+
+.summary-card:hover{
+
+    transform:translateY(-4px);
+
+}
+
+.summary-card h6{
+
+    font-size:15px;
+
+    margin-bottom:10px;
+
+    font-weight:600;
+
+}
+
+.summary-card h2{
+
+    font-size:30px;
+
+    font-weight:700;
+
+    margin:0;
+
+}
+
+.summary-blue{
+
+    background:linear-gradient(135deg,#2563eb,#1d4ed8);
+
+}
+
+.summary-green{
+
+    background:linear-gradient(135deg,#16a34a,#15803d);
+
+}
+
+.summary-orange{
+
+    background:linear-gradient(135deg,#f59e0b,#d97706);
+
+}
+
+.summary-red{
+
+    background:linear-gradient(135deg,#dc2626,#b91c1c);
+
+}
+
+/* ==========================================
+                TABLE
+========================================== */
+
+.table{
+
+    margin-bottom:0;
+
+}
+
+.table thead th{
+
+    background:#212529;
+
+    color:#fff;
+
+    text-align:center;
+
+    vertical-align:middle;
+
+    white-space:nowrap;
+
+}
+
+.table tbody td{
+
+    vertical-align:middle;
+
+}
+
+.table tbody tr:hover{
+
+    background:#eef6ff;
+
+}
+
+.table td.text-end{
+
+    font-weight:600;
+
+}
+
+.table a{
+
+    text-decoration:none;
+
+    color:#0d6efd;
+
+    font-weight:600;
+
+}
+
+.table a:hover{
+
+    color:#dc3545;
+
+    text-decoration:underline;
+
+}
+
+tfoot{
+
+    font-size:16px;
+
+}
+
+/* ==========================================
+                PRINT
+========================================== */
+
+@media print{
+
+.sidebar,
+.topbar,
+.btn,
+form{
+
+    display:none !important;
+
+}
+
+.card{
+
+    border:none;
+
+    box-shadow:none;
+
+}
+
+}
+
+/* ==========================================
+                MOBILE
+========================================== */
+
+@media(max-width:768px){
+
+.summary-card{
+
+    margin-bottom:15px;
+
+}
+
+.card-header h4{
+
+    font-size:20px;
+
+}
+
+.table{
+
+    font-size:13px;
+
+}
+
+}

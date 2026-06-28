@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/purchase.css">
+{% endblock %}
+
+{% block content %}
+<div class="purchase-page">
+
+    <!-- Header -->
+    <div class="purchase-header">
+        <div>
+            <h1>Purchase Management</h1>
+            <p>Manage Purchase Invoices & Supplier Orders</p>
+        </div>
+
+        <a href="/purchase/add" class="btn-add">
+            + Add Purchase
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <h3>Total Purchases</h3>
+            <h2>{{ purchase_count or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Total Amount</h3>
+            <h2>₹ {{ purchase_amount or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Suppliers</h3>
+            <h2>{{ supplier_count or 0 }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <h3>Today Purchase</h3>
+            <h2>₹ {{ today_amount or 0 }}</h2>
+        </div>
+
+    </div>
+
+    <!-- Filter Card -->
+
+    <div class="filter-card">
+
+        <form method="get" action="/purchase">
+
+            <div class="filter-group">
+
+                <div>
+                    <label>From Date</label>
+                    <input type="date" name="from_date" value="{{ from_date }}">
+                </div>
+
+                <div>
+                    <label>To Date</label>
+                    <input type="date" name="to_date" value="{{ to_date }}">
+                </div>
+
+                <div>
+                    <button type="submit" class="btn-search">
+                        Search
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- Purchase Table -->
+
+    <div class="table-card">
+
+        <table class="purchase-table">
+
+            <thead>
+                <tr>
+                    <th>Purchase No</th>
+                    <th>Date</th>
+                    <th>Supplier</th>
+                    <th>Invoice No</th>
+                    <th>Total Amount</th>
+                    <th width="180">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for row in purchases %}
+
+                <tr>
+
+                    <td>{{ row.purchase_no }}</td>
+
+                    <td>{{ row.purchase_date }}</td>
+
+                    <td>{{ row.supplier_name }}</td>
+
+                    <td>{{ row.invoice_no }}</td>
+
+                    <td>₹ {{ row.grand_total }}</td>
+
+                    <td>
+                        <div class="action-buttons">
+                            <a href="/purchase/edit/{{ row.purchase_id }}" class="btn-edit">
+                                Edit
+                            </a>
+
+                            <a href="/purchase/delete/{{ row.purchase_id }}" class="btn-delete"
+                                onclick="return confirm('Delete this Purchase ?')">
+                                Delete
+                            </a>
+                        </div>
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    let materialsOptions = `
+{% for m in materials %}
+<option value="{{ m.id }}">
+    {{ m.material_name }}
+</option>
+{% endfor %}
+`;
+
+</script>
+
+<script src="/static/js/purchase_add.js"></script>
+{% endblock %}

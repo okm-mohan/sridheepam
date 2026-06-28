@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/myprofile.css') }}">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+
+<div class="profile-page">
+
+    <!--================ HEADER =================-->
+    <div class="profile-header">
+
+        <div class="cover"></div>
+
+        <div class="profile-photo-section">
+
+            <div class="profile-image">
+
+                <img id="profilePreview"
+                     src="{{ user.profile_photo if user.profile_photo else url_for('static', filename='images/default-user.png') }}"
+                     alt="Profile">
+
+                <label for="photoInput" class="camera-btn">
+                    <i class="fa-solid fa-camera"></i>
+                </label>
+
+                <input type="file"
+                       id="photoInput"
+                       accept="image/*"
+                       hidden>
+
+            </div>
+
+            <div class="profile-name">
+
+                <h2>{{ user.full_name }}</h2>
+
+                <span>{{ user.role }}</span>
+
+                {% if user.is_active %}
+                <div class="status active">
+                    <i class="fa-solid fa-circle"></i> Active
+                </div>
+                {% else %}
+                <div class="status inactive">
+                    <i class="fa-solid fa-circle"></i> Inactive
+                </div>
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!--================ STATS =================-->
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <i class="fa-solid fa-calendar-check"></i>
+            <h3>245</h3>
+            <span>Login Days</span>
+        </div>
+
+        <div class="stat-card">
+            <i class="fa-solid fa-users"></i>
+            <h3>320</h3>
+            <span>Members</span>
+        </div>
+
+        <div class="stat-card">
+            <i class="fa-solid fa-indian-rupee-sign"></i>
+            <h3>₹2,45,000</h3>
+            <span>Collections</span>
+        </div>
+
+        <div class="stat-card">
+            <i class="fa-solid fa-clock"></i>
+            <h3>{{ user.last_login }}</h3>
+            <span>Last Login</span>
+        </div>
+
+    </div>
+
+    <!--================ CONTENT =================-->
+
+    <div class="profile-grid">
+
+        <!-- Personal -->
+
+        <div class="card">
+
+            <div class="card-title">
+                <i class="fa-solid fa-user"></i>
+                Personal Information
+            </div>
+
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" value="{{ user.full_name }}" id="fullname" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" value="{{ user.username }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Mobile</label>
+                <input type="text" value="{{ user.mobile }}" id="mobile" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" value="{{ user.email }}" id="email" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Gender</label>
+                <select id="gender" disabled>
+                    <option {{'selected' if user.gender=='Male'}}>Male</option>
+                    <option {{'selected' if user.gender=='Female'}}>Female</option>
+                    <option {{'selected' if user.gender=='Other'}}>Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input type="date" value="{{ user.dob }}" id="dob" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Address</label>
+                <textarea id="address" readonly>{{ user.address }}</textarea>
+            </div>
+
+        </div>
+
+        <!-- Work -->
+
+        <div class="card">
+
+            <div class="card-title">
+                <i class="fa-solid fa-briefcase"></i>
+                Work Information
+            </div>
+
+            <div class="info-row">
+                <span>Role</span>
+                <b>{{ user.role }}</b>
+            </div>
+
+            <div class="info-row">
+                <span>Status</span>
+                <b>Active</b>
+            </div>
+
+            <div class="info-row">
+                <span>Created</span>
+                <b>{{ user.created_at }}</b>
+            </div>
+
+            <div class="info-row">
+                <span>Last Login</span>
+                <b>{{ user.last_login }}</b>
+            </div>
+
+            <div class="info-row">
+                <span>User ID</span>
+                <b>#{{ user.id }}</b>
+            </div>
+
+            <hr>
+
+            <button class="btn primary" id="editBtn">
+                <i class="fa-solid fa-pen"></i>
+                Edit Profile
+            </button>
+
+            <button class="btn success" id="saveBtn">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Save Changes
+            </button>
+
+            <button class="btn danger">
+                <i class="fa-solid fa-key"></i>
+                Change Password
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/myprofile.js') }}"></script>
+
+</body>
+</html>

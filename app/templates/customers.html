@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Customers
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <h4>Customers</h4>
+
+        <a href="/customer/add"
+           class="btn btn-primary">
+            Add Customer
+        </a>
+
+    </div>
+
+    <table class="table table-hover">
+
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Company</th>
+                <th>Mobile</th>
+                <th>GST</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for item in customers %}
+
+            <tr>
+
+                <td>{{ item.id }}</td>
+                <td>{{ item.customer_name }}</td>
+                <td>{{ item.company_name }}</td>
+                <td>{{ item.mobile }}</td>
+                <td>{{ item.gst_number }}</td>
+
+                <td>
+
+                    <a href="/customer/edit/{{ item.id }}"
+   class="btn btn-warning btn-sm">
+   Edit
+</a>
+
+                    <a href="/customer/delete/{{ item.id }}"
+                       class="btn btn-danger btn-sm"
+                       onclick="return confirm('Delete Customer?')">
+                        Delete
+                    </a>
+
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Add Supplier
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <h4 class="mb-4">Add Supplier</h4>
+
+    <form method="post" action="/supplier/save">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <label>Supplier Name</label>
+                <input type="text"
+                       name="supplier_name"
+                       class="form-control"
+                       required>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Company Name</label>
+                <input type="text"
+                       name="company_name"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>GST Number</label>
+                <input type="text"
+                       name="gst_number"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Phone</label>
+                <input type="text"
+                       name="phone"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Mobile</label>
+                <input type="text"
+                       name="mobile"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Email</label>
+                <input type="email"
+                       name="email"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>State</label>
+                <input type="text"
+                       name="state"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-12 mb-3">
+                <label>Address</label>
+                <textarea
+                    name="address"
+                    rows="4"
+                    class="form-control"></textarea>
+            </div>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-success">
+            Save Supplier
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

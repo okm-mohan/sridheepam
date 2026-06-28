@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Sales Report
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/sales_reports.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white">
+        <h4 class="mb-0">
+            <i class="bi bi-graph-up-arrow"></i>
+            Date Wise Sales Report
+        </h4>
+    </div>
+
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-lg-2">
+
+                    <label class="form-label fw-bold">
+                        From Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="from_date"
+                        value="{{ from_date }}"
+                        class="form-control">
+
+                </div>
+
+                <div class="col-lg-2">
+
+                    <label class="form-label fw-bold">
+                        To Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="to_date"
+                        value="{{ to_date }}"
+                        class="form-control">
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <label class="form-label fw-bold">
+                        Customer
+                    </label>
+
+                    <select
+                        name="customer_id"
+                        class="form-select">
+
+                        <option value="0">
+                            ALL Customers
+                        </option>
+
+                        {% for customer in customers %}
+
+                        <option
+                            value="{{ customer.id }}"
+                            {% if customer.id == customer_id %}selected{% endif %}>
+
+                            {{ customer.customer_name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button
+                        class="btn btn-primary">
+
+                        <i class="bi bi-search"></i>
+
+                        Search
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button
+                        type="button"
+                        class="btn btn-success"
+                        onclick="window.print()">
+
+                        <i class="bi bi-printer"></i>
+
+                        Print
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+        <hr>
+
+        <div class="row mb-4">
+
+            <div class="col-md-3">
+
+                <div class="card bg-primary text-white text-center">
+
+                    <div class="card-body">
+
+                        <h6>Total Sales</h6>
+
+                        <h2>
+
+                            {{ sale_count }}
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="card bg-success text-white text-center">
+
+                    <div class="card-body">
+
+                        <h6>Total Sales Amount</h6>
+
+                        <h2>
+
+                            ₹ {{ "{:,.2f}".format(sale_amount) }}
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover table-striped align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+
+                        <th width="60">S.No</th>
+
+                        <th>Invoice No</th>
+
+                        <th>Date</th>
+
+                        <th>Customer</th>
+
+                        <th class="text-end">Items</th>
+
+                        <th class="text-end">Qty</th>
+
+                        <th class="text-end">GST</th>
+
+                        <th class="text-end">Grand Total</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for row in report %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ loop.index }}
+
+                        </td>
+
+                        <td>
+
+                            <a href="/sales/edit/{{ row.id }}">
+
+                                {{ row.invoice_number }}
+
+                            </a>
+
+                        </td>
+
+                        <td>
+
+                            {{ row.sale_date }}
+
+                        </td>
+
+                        <td>
+
+                            {{ row.customer_name }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ row.total_items }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.3f"|format(row.total_qty or 0) }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.2f"|format(row.gst_amount or 0) }}
+
+                        </td>
+
+                        <td class="text-end fw-bold text-success">
+
+                            {{ "%.2f"|format(row.grand_total or 0) }}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/sales_reports.js"></script>
+{% endblock %}

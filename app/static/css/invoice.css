@@ -1,0 +1,609 @@
+/* ==========================================
+   GLOBAL
+========================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+
+    background:#d9d9d9;
+
+    font-family:Arial,Helvetica,sans-serif;
+
+    font-size:12px;
+
+    color:#222;
+
+}
+
+.invoice-page{
+
+    display:flex;
+
+    justify-content:center;
+
+    padding:25px;
+
+}
+
+/* ==========================================
+   A4 PAGE
+========================================== */
+
+.invoice{
+
+    width:210mm;
+
+    min-height:297mm;
+
+    background:#ffffff;
+
+    padding:18mm;
+
+    box-shadow:0 0 15px rgba(0,0,0,.15);
+
+    border:1px solid #bbb;
+
+}
+
+/* ==========================================
+   HEADER
+========================================== */
+
+.header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+    margin-bottom:30px;
+
+}
+
+.company{
+
+    width:58%;
+
+}
+
+.company h2{
+
+    font-size:28px;
+
+    color:#000;
+
+    margin-bottom:8px;
+
+}
+
+.company p{
+
+    line-height:22px;
+
+}
+
+/* ==========================================
+   INVOICE TITLE
+========================================== */
+
+.invoice-title{
+
+    width:35%;
+
+    text-align:right;
+
+}
+
+.invoice-title h1{
+
+    color:#5d7fc7;
+
+    font-size:46px;
+
+    letter-spacing:2px;
+
+    margin-bottom:10px;
+
+}
+
+.invoice-title table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.invoice-title td{
+
+    border:1px solid #777;
+
+    padding:6px;
+
+    font-size:12px;
+
+}
+
+.invoice-title td:first-child{
+
+    width:45%;
+
+    background:#f5f5f5;
+
+    font-weight:bold;
+
+}
+
+/* ==========================================
+   ADDRESS ROW
+========================================== */
+
+.address-row{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    margin-bottom:20px;
+
+}
+
+.address-box{
+
+    width:47%;
+
+}
+
+.address-box .title{
+
+    background:#3b4f91;
+
+    color:white;
+
+    padding:7px 10px;
+
+    font-weight:bold;
+
+    margin-bottom:10px;
+
+}
+
+.address-box p{
+
+    line-height:20px;
+
+}
+
+/* ==========================================
+   SHIPPING TABLE
+========================================== */
+
+.ship-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-bottom:15px;
+
+}
+
+.ship-table th{
+
+    background:#3b4f91;
+
+    color:#fff;
+
+    padding:8px;
+
+    font-size:12px;
+
+    border:1px solid #444;
+
+}
+
+.ship-table td{
+
+    border:1px solid #777;
+
+    padding:8px;
+
+    text-align:center;
+
+}
+
+/* ==========================================
+   ITEM TABLE
+========================================== */
+
+.item-table{
+    width:100%;
+    border-collapse:collapse;
+    min-height:260px;   /* Reduced by approximately 5 rows */
+}
+
+.item-table th{
+
+    background:#3b4f91;
+
+    color:#fff;
+
+    padding:8px;
+
+    border:1px solid #444;
+
+    font-size:12px;
+
+}
+
+.item-table td{
+
+    border:1px solid #999;
+
+    padding:6px;
+
+    height:24px;
+
+}
+
+.item-table tbody tr:hover{
+
+    background:#fafcff;
+
+}
+
+.item-table td:nth-child(3),
+
+.item-table td:nth-child(4),
+
+.item-table td:nth-child(5){
+
+    text-align:right;
+
+}
+
+/* ==========================================
+   BOTTOM SECTION
+========================================== */
+
+.bottom-section{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+    gap:25px;
+
+    margin-top:20px;
+
+}
+
+/* ==========================================
+   INSTRUCTION BOX
+========================================== */
+
+.instruction-box{
+
+    width:60%;
+
+    border:1px solid #888;
+
+    min-height:180px;
+
+}
+
+.instruction-title{
+
+    background:#3b4f91;
+
+    color:#fff;
+
+    padding:8px 12px;
+
+    font-weight:bold;
+
+    font-size:13px;
+
+}
+
+.instruction-box ol{
+
+    margin:15px 25px;
+
+    line-height:24px;
+
+}
+
+.amount-words{
+
+    border-top:1px solid #bbb;
+
+    margin-top:20px;
+
+    padding:15px;
+
+}
+
+.amount-words strong{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    font-size:13px;
+
+}
+
+.amount-words p{
+
+    min-height:45px;
+
+    border:1px solid #bbb;
+
+    padding:10px;
+
+    background:#fcfcfc;
+
+}
+
+/* ==========================================
+   TOTAL BOX
+========================================== */
+
+.total-box{
+
+    width:35%;
+
+}
+
+.total-box table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.total-box td{
+
+    border:1px solid #777;
+
+    padding:9px;
+
+    font-size:13px;
+
+}
+
+.total-box tr td:first-child{
+
+    background:#fafafa;
+
+    font-weight:bold;
+
+}
+
+.total-box tr:last-child td{
+
+    background:#3b4f91;
+
+    color:#fff;
+
+    font-size:15px;
+
+    font-weight:bold;
+
+}
+
+.grand td{
+
+    background:#3b4f91 !important;
+
+    color:#fff !important;
+
+}
+
+/* ==========================================
+   PAYMENT NOTE
+========================================== */
+
+.payment-note{
+
+    margin-top:30px;
+
+    border-top:1px dashed #bbb;
+
+    padding-top:15px;
+
+    font-size:13px;
+
+    text-align:center;
+
+    line-height:24px;
+
+}
+
+/* ==========================================
+   FOOTER
+========================================== */
+
+.footer{
+
+    margin-top:35px;
+
+    text-align:center;
+
+    line-height:22px;
+
+    color:#444;
+
+}
+
+.footer h3{
+
+    margin-top:15px;
+
+    color:#3b4f91;
+
+    font-size:22px;
+
+}
+
+/* ==========================================
+   SIGNATURE
+========================================== */
+
+.signature{
+
+    margin-top:70px;
+
+    text-align:right;
+
+    font-size:13px;
+
+    font-weight:bold;
+
+}
+
+/* ==========================================
+   PRINT TOOLBAR
+========================================== */
+
+.print-toolbar{
+
+    text-align:center;
+
+    padding:20px;
+
+}
+
+.print-toolbar button{
+
+    background:#3b4f91;
+
+    color:#fff;
+
+    border:none;
+
+    padding:12px 28px;
+
+    margin:0 6px;
+
+    border-radius:4px;
+
+    cursor:pointer;
+
+    font-size:14px;
+
+    transition:.25s;
+
+}
+
+.print-toolbar button:hover{
+
+    background:#2e3f73;
+
+}
+
+/* ==========================================
+   PAGE SETTINGS
+========================================== */
+
+@page{
+
+    size:A4;
+
+    margin:8mm;
+
+}
+
+/* ==========================================
+   PRINT
+========================================== */
+
+@media print{
+
+    html,
+    body{
+
+        width:210mm;
+
+        height:297mm;
+
+        margin:0;
+
+        padding:0;
+
+        background:#fff;
+
+    }
+
+    .print-toolbar{
+
+        display:none;
+
+    }
+
+    .invoice-page{
+
+        padding:0;
+
+        background:#fff;
+
+    }
+
+    .invoice{
+
+        width:100%;
+
+        min-height:100%;
+
+        margin:0;
+
+        padding:10mm;
+
+        border:none;
+
+        box-shadow:none;
+
+    }
+
+    table{
+
+        page-break-inside:auto;
+
+    }
+
+    tr{
+
+        page-break-inside:avoid;
+
+    }
+
+    td,
+    th{
+
+        page-break-inside:avoid;
+
+    }
+
+    .bottom-section{
+
+        page-break-inside:avoid;
+
+    }
+
+    .footer{
+
+        page-break-inside:avoid;
+
+    }
+
+}

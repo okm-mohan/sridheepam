@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Edit Raw Material
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <h4 class="mb-4">
+        Edit Raw Material
+    </h4>
+
+    <form method="post"
+          action="/raw-material/update">
+
+        <input type="hidden"
+               name="id"
+               value="{{ material.id }}">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <label>Material Name</label>
+                <input
+                    type="text"
+                    name="material_name"
+                    value="{{ material.material_name }}"
+                    class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Unit</label>
+
+                <select
+                    name="unit"
+                    class="form-control">
+
+                    <option value="KG"
+                    {% if material.unit=='KG' %}selected{% endif %}>
+                    KG
+                    </option>
+
+                    <option value="LTR"
+                    {% if material.unit=='LTR' %}selected{% endif %}>
+                    LTR
+                    </option>
+
+                    <option value="PCS"
+                    {% if material.unit=='PCS' %}selected{% endif %}>
+                    PCS
+                    </option>
+
+                </select>
+
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Purchase Price</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="purchase_price"
+                    value="{{ material.purchase_price }}"
+                    class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Stock Qty</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="stock_qty"
+                    value="{{ material.stock_qty }}"
+                    class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Minimum Stock</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="minimum_stock"
+                    value="{{ material.minimum_stock }}"
+                    class="form-control">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>GST %</label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    name="gst_percent"
+                    value="{{ material.gst_percent }}"
+                    class="form-control">
+            </div>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-success">
+
+            Update Material
+
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

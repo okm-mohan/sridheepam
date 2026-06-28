@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Monthly Purchase Report
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/monthly_purchase_report.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white">
+
+        <h4 class="mb-0">
+
+            <i class="bi bi-calendar3"></i>
+
+            Month Wise Purchase Report
+
+        </h4>
+
+    </div>
+
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-lg-2">
+
+                    <label class="form-label fw-bold">
+
+                        From Year
+
+                    </label>
+
+                    <select
+                        name="from_year"
+                        class="form-select">
+
+                        {% for year in years %}
+
+                        <option
+                            value="{{ year }}"
+                            {% if year == from_year %}selected{% endif %}>
+
+                            {{ year }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-2">
+
+                    <label class="form-label fw-bold">
+
+                        To Year
+
+                    </label>
+
+                    <select
+                        name="to_year"
+                        class="form-select">
+
+                        {% for year in years %}
+
+                        <option
+                            value="{{ year }}"
+                            {% if year == to_year %}selected{% endif %}>
+
+                            {{ year }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <label class="form-label fw-bold">
+
+                        Supplier
+
+                    </label>
+
+                    <select
+                        name="supplier_id"
+                        class="form-select">
+
+                        <option value="0">
+
+                            ALL Suppliers
+
+                        </option>
+
+                        {% for supplier in suppliers %}
+
+                        <option
+                            value="{{ supplier.id }}"
+                            {% if supplier.id == supplier_id %}selected{% endif %}>
+
+                            {{ supplier.supplier_name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button class="btn btn-primary">
+
+                        <i class="bi bi-search"></i>
+
+                        Search
+
+                    </button>
+
+                </div>
+
+                <div class="col-lg-2 d-grid">
+
+                    <button
+                        type="button"
+                        class="btn btn-success"
+                        onclick="window.print()">
+
+                        <i class="bi bi-printer"></i>
+
+                        Print
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+        <hr>
+
+        <div class="row mb-4">
+
+            <div class="col-md-3">
+
+                <div class="summary-card summary-blue text-center">
+
+                    <h6>Total Purchase Bills</h6>
+
+                    <h2>
+
+                        {{ purchase_count }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="summary-card summary-green text-center">
+
+                    <h6>Total Purchase Amount</h6>
+
+                    <h2>
+
+                        ₹ {{ "{:,.2f}".format(purchase_amount) }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="summary-card summary-orange text-center">
+
+                    <h6>Total Quantity</h6>
+
+                    <h2>
+
+                        {{ "%.3f"|format(total_qty or 0) }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="summary-card summary-red text-center">
+
+                    <h6>Total GST</h6>
+
+                    <h2>
+
+                        ₹ {{ "%.2f"|format(total_gst or 0) }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+
+                        <th width="60">
+
+                            S.No
+
+                        </th>
+
+                        <th>
+
+                            Month
+
+                        </th>
+
+                        <th class="text-center">
+
+                            Purchase Bills
+
+                        </th>
+
+                        <th class="text-end">
+
+                            Quantity
+
+                        </th>
+
+                        <th class="text-end">
+
+                            GST Amount
+
+                        </th>
+
+                        <th class="text-end">
+
+                            Purchase Amount
+
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for row in report %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ loop.index }}
+
+                        </td>
+
+                        <td>
+
+                            <a href="/purchase-reports?from_month={{ row.month_no }}&year={{ row.year }}&supplier_id={{ supplier_id }}">
+
+                                <strong>
+
+                                    {{ row.month_name }}
+
+                                </strong>
+
+                            </a>
+
+                        </td>
+
+                        <td class="text-center">
+
+                            {{ row.purchase_count }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.3f"|format(row.total_qty or 0) }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.2f"|format(row.gst_amount or 0) }}
+
+                        </td>
+
+                        <td class="text-end fw-bold text-success">
+
+                            {{ "%.2f"|format(row.purchase_amount or 0) }}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+                <tfoot>
+
+                    <tr class="table-primary fw-bold">
+
+                        <td colspan="2">
+
+                            Grand Total
+
+                        </td>
+
+                        <td class="text-center">
+
+                            {{ purchase_count }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.3f"|format(total_qty or 0) }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            {{ "%.2f"|format(total_gst or 0) }}
+
+                        </td>
+
+                        <td class="text-end">
+
+                            ₹ {{ "{:,.2f}".format(purchase_amount) }}
+
+                        </td>
+
+                    </tr>
+
+                </tfoot>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/monthly_purchase_report.js"></script>
+{% endblock %}

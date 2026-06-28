@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Raw Materials
+{% endblock %}
+
+{% block content %}
+
+<div class="section-card">
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <h4>Raw Materials</h4>
+
+        <a href="/raw-material/add"
+           class="btn btn-primary">
+            Add Material
+        </a>
+
+    </div>
+
+    <table class="table table-hover">
+
+        <thead>
+
+            <tr>
+                <th>ID</th>
+                <th>Material</th>
+                <th>Unit</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>GST</th>
+                <th>Action</th>
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for item in materials %}
+
+            <tr>
+
+                <td>{{ item.id }}</td>
+                <td>{{ item.material_name }}</td>
+                <td>{{ item.unit }}</td>
+                <td>{{ item.purchase_price }}</td>
+                <td>{{ item.stock_qty }}</td>
+                <td>{{ item.gst_percent }}</td>
+
+                <td>
+
+                <a href="/raw-material/edit/{{ item.id }}"
+   class="btn btn-warning btn-sm">
+   Edit
+</a>
+
+                  <a
+    href="/raw-material/delete/{{ item.id }}"
+    class="btn btn-danger btn-sm"
+    onclick="return confirm('Delete this material?')">
+    Delete
+</a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Invoice</title>
+
+    <link rel="stylesheet" href="/static/css/invoice.css">
+
+</head>
+
+<body>
+
+    <div class="invoice-page">
+
+        <div class="invoice">
+
+            <!-- ========================================= -->
+            <!-- HEADER -->
+            <!-- ========================================= -->
+
+            <div class="header">
+
+                <div class="company">
+
+                    <h2>{{ company.company_name }}</h2>
+
+                    <p>{{ company.address }}</p>
+
+                    <p>
+                        {{ company.city }},
+                        {{ company.state }}
+                        -
+                        {{ company.pincode }}
+                    </p>
+
+                    <p>
+
+                        Phone :
+                        {{ company.phone }}
+
+                    </p>
+
+                    <p>
+
+                        Email :
+                        {{ company.email }}
+
+                    </p>
+
+                    <p>
+
+                        GSTIN :
+                        {{ company.gst_number }}
+
+                    </p>
+
+                </div>
+
+                <div class="invoice-title">
+
+                    <h1>INVOICE</h1>
+
+                    <table>
+
+                        <tr>
+
+                            <td>Date</td>
+
+                            <td>{{ sale.sale_date }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Invoice #</td>
+
+                            <td>{{ sale.invoice_number }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Customer ID</td>
+
+                            <td>{{ sale.customer_id }}</td>
+
+                        </tr>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <!-- ========================================= -->
+            <!-- BILL TO / SHIP TO -->
+            <!-- ========================================= -->
+
+            <div class="address-row">
+
+                <div class="address-box">
+
+                    <div class="title">
+
+                        BILL TO :
+
+                    </div>
+
+                    <p>
+
+                        <b>{{ sale.customer_name }}</b>
+
+                    </p>
+
+                    <p>
+
+                        {{ sale.address }}
+
+                    </p>
+
+                    <p>
+
+                        {{ sale.mobile }}
+
+                    </p>
+
+                    <p>
+
+                        GST :
+
+                        {{ sale.gst_number }}
+
+                    </p>
+
+                </div>
+
+                <div class="address-box">
+
+                    <div class="title">
+
+                        SHIP TO :
+
+                    </div>
+
+                    <p>
+
+                        <b>{{ sale.customer_name }}</b>
+
+                    </p>
+
+                    <p>
+
+                        {{ sale.address }}
+
+                    </p>
+
+                    <p>
+
+                        {{ sale.mobile }}
+
+                    </p>
+
+                    <p>
+
+                        {{ sale.email }}
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <!-- ========================================= -->
+            <!-- SHIPPING INFO -->
+            <!-- ========================================= -->
+
+            
+            <!-- ========================================= -->
+            <!-- ITEM TABLE -->
+            <!-- ========================================= -->
+
+            <table class="item-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th width="70">ITEM #</th>
+
+                        <th>DESCRIPTION</th>
+
+                        <th width="80">QTY</th>
+
+                        <th width="110">UNIT PRICE</th>
+
+                        <th width="120">TOTAL</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for item in items %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ item.product_code }}
+
+                        </td>
+
+                        <td>
+
+                            <b>{{ item.product_name }}</b>
+
+                        </td>
+
+                        <td align="center">
+
+                            {{ item.quantity }}
+
+                        </td>
+
+                        <td align="right">
+
+                            {{ "%.2f"|format(item.price) }}
+
+                        </td>
+
+                        <td align="right">
+
+                            {{ "%.2f"|format(item.total) }}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                    <!-- Fill Remaining Rows for A4 Height -->
+
+                    {% for i in range(7) %}
+
+                    <tr>
+
+                        <td>&nbsp;</td>
+
+                        <td></td>
+
+                        <td></td>
+
+                        <td></td>
+
+                        <td></td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+            <!-- ===================================== -->
+            <!-- BOTTOM SECTION -->
+            <!-- ===================================== -->
+
+            <div class="bottom-section">
+
+                <!-- Left Side -->
+
+                <div class="instruction-box">
+
+                    <div class="instruction-title">
+
+                        Other Comments or Special Instructions
+
+                    </div>
+
+                    <ol>
+
+                        <li>
+
+                            Total payment due in 30 days.
+
+                        </li>
+
+                        <li>
+
+                            Please include the invoice number on your payment.
+
+                        </li>
+
+                    </ol>
+
+                    <div class="amount-words">
+
+                        <strong>Amount in Words</strong>
+
+                        <p class="amount-in-words">
+    {{ amount_in_words }}
+</p>
+
+                    </div>
+
+                </div>
+
+                <!-- Right Side -->
+
+                <div class="total-box">
+
+                    <table>
+
+                        <tr>
+
+                            <td>SUBTOTAL</td>
+
+                            <td align="right">
+
+                                ₹ {{ "%.2f"|format(sale.total_amount) }}
+
+                            </td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>TAX RATE</td>
+
+                            <td align="right">
+
+                                {{ sale.tax_rate if sale.tax_rate else "0" }} %
+
+                            </td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>TAX</td>
+
+                            <td align="right">
+
+                                ₹ {{ "%.2f"|format(sale.gst_amount) }}
+
+                            </td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>OTHER</td>
+
+                            <td align="right">
+
+                                ₹ 0.00
+
+                            </td>
+
+                        </tr>
+
+                        <tr class="grand">
+
+                            <td>
+
+                                <b>TOTAL</b>
+
+                            </td>
+
+                            <td align="right">
+
+                                <b>
+
+                                    ₹ {{ "%.2f"|format(sale.grand_total) }}
+
+                                </b>
+
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <!-- ===================================== -->
+            <!-- PAYMENT NOTE -->
+            <!-- ===================================== -->
+
+            <div class="payment-note">
+
+                Make all checks payable to
+
+                <br>
+
+                <strong>
+
+                    {{ company.company_name }}
+
+                </strong>
+
+            </div>
+
+            <!-- ===================================== -->
+            <!-- FOOTER -->
+            <!-- ===================================== -->
+
+
+            <!-- ===================================== -->
+            <!-- SIGNATURE -->
+            <!-- ===================================== -->
+
+            <div class="signature">
+
+                ___________________________
+
+                <br>
+
+                Authorized Signature
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        window.onload = function () {
+
+            const params = new URLSearchParams(window.location.search);
+
+            if (params.get("print") == "1") {
+
+                window.print();
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>

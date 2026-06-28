@@ -1,0 +1,354 @@
+/* =====================================================
+   PURCHASE PAGE
+===================================================== */
+
+.purchase-page{
+    padding:25px;
+    min-height:100vh;
+}
+
+/* Background */
+
+body{
+    background:
+    linear-gradient(
+        rgba(12,20,35,0.88),
+        rgba(12,20,35,0.92)
+    ),
+    url("https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070");
+    background-size:cover;
+    background-position:center;
+    background-attachment:fixed;
+}
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.purchase-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.purchase-header h1{
+    color:#fff;
+    font-size:34px;
+    font-weight:700;
+    margin-bottom:5px;
+}
+
+.purchase-header p{
+    color:#cbd5e1;
+    font-size:15px;
+}
+
+/* =====================================================
+   ADD BUTTON
+===================================================== */
+
+.btn-add{
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(
+        135deg,
+        #2563eb,
+        #7c3aed
+    );
+
+    padding:14px 26px;
+    border-radius:14px;
+
+    font-size:15px;
+    font-weight:600;
+
+    transition:0.3s;
+    box-shadow:0 10px 25px rgba(37,99,235,.35);
+}
+
+.btn-add:hover{
+    transform:translateY(-3px);
+    box-shadow:0 15px 35px rgba(37,99,235,.45);
+}
+
+/* =====================================================
+   STATS CARDS
+===================================================== */
+
+.stats-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:20px;
+    margin-bottom:25px;
+}
+
+.stat-card{
+    padding:22px;
+    border-radius:20px;
+
+    backdrop-filter:blur(20px);
+
+    background:rgba(255,255,255,0.08);
+
+    border:1px solid rgba(255,255,255,0.15);
+
+    box-shadow:
+    0 10px 30px rgba(0,0,0,0.20);
+
+    transition:0.3s;
+}
+
+.stat-card:hover{
+    transform:translateY(-5px);
+}
+
+.stat-card h3{
+    color:#cbd5e1;
+    font-size:14px;
+    margin-bottom:10px;
+}
+
+.stat-card h2{
+    color:#fff;
+    font-size:30px;
+    font-weight:700;
+}
+
+/* =====================================================
+   FILTER CARD
+===================================================== */
+
+.filter-card{
+    padding:25px;
+    margin-bottom:25px;
+
+    border-radius:20px;
+
+    backdrop-filter:blur(20px);
+
+    background:rgba(255,255,255,0.08);
+
+    border:1px solid rgba(255,255,255,0.15);
+}
+
+.filter-group{
+    display:flex;
+    gap:20px;
+    align-items:end;
+}
+
+.filter-group label{
+    display:block;
+    color:white;
+    margin-bottom:8px;
+    font-size:14px;
+}
+
+.filter-group input{
+    width:220px;
+    height:48px;
+
+    border:none;
+    outline:none;
+
+    border-radius:12px;
+
+    background:rgba(255,255,255,0.12);
+
+    color:white;
+
+    padding:0 15px;
+}
+
+/* =====================================================
+   SEARCH BUTTON
+===================================================== */
+
+.btn-search{
+    height:48px;
+
+    border:none;
+    cursor:pointer;
+
+    padding:0 30px;
+
+    border-radius:12px;
+
+    color:white;
+    font-weight:600;
+
+    background:linear-gradient(
+        135deg,
+        #10b981,
+        #059669
+    );
+
+    transition:0.3s;
+}
+
+.btn-search:hover{
+    transform:translateY(-2px);
+}
+
+/* =====================================================
+   TABLE CARD
+===================================================== */
+
+.table-card{
+    padding:25px;
+
+    border-radius:20px;
+
+    backdrop-filter:blur(20px);
+
+    background:rgba(255,255,255,0.08);
+
+    border:1px solid rgba(255,255,255,0.15);
+}
+
+/* =====================================================
+   TABLE
+===================================================== */
+
+.purchase-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.purchase-table thead tr{
+    background:rgba(255,255,255,0.08);
+}
+
+.purchase-table th{
+    padding:18px;
+    text-align:left;
+
+    color:white;
+    font-size:15px;
+}
+
+.purchase-table td{
+    padding:18px;
+    color:#e2e8f0;
+
+    border-bottom:
+    1px solid rgba(255,255,255,0.08);
+}
+
+.purchase-table tbody tr{
+    transition:0.3s;
+}
+
+.purchase-table tbody tr:hover{
+    background:rgba(255,255,255,0.05);
+}
+
+/* =====================================================
+   ACTION BUTTONS
+===================================================== */
+
+.btn-edit{
+    text-decoration:none;
+
+    padding:8px 15px;
+
+    border-radius:10px;
+
+    color:white;
+
+    background:#2563eb;
+
+    margin-right:5px;
+}
+
+.btn-delete{
+    text-decoration:none;
+
+    padding:8px 15px;
+
+    border-radius:10px;
+
+    color:white;
+
+    background:#ef4444;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:1200px){
+
+    .stats-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+}
+
+@media(max-width:768px){
+
+    .stats-grid{
+        grid-template-columns:1fr;
+    }
+
+    .filter-group{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .filter-group input{
+        width:100%;
+    }
+
+    .purchase-header{
+        flex-direction:column;
+        gap:15px;
+        align-items:flex-start;
+    }
+
+}
+
+.action-buttons{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    align-items:center;
+}
+
+.btn-edit,
+.btn-delete{
+    min-width:95px;
+    height:40px;
+    border:none;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transition:.25s;
+    text-decoration:none;
+}
+
+.btn-edit{
+    background:#2563eb;
+    color:#fff;
+}
+
+.btn-edit:hover{
+    background:#1d4ed8;
+    transform:translateY(-2px);
+}
+
+.btn-delete{
+    background:#ef4444;
+    color:#fff;
+}
+
+.btn-delete:hover{
+    background:#dc2626;
+    transform:translateY(-2px);
+}
