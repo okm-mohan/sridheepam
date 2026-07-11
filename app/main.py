@@ -202,6 +202,30 @@ def require_company_selection(request: Request):
     return None
 
 
+def clean_database_error(error):
+    message = str(error)
+
+    replacements = [
+        "Epiclife@cbe32#",
+        "Epiclife%40cbe32%23",
+    ]
+
+    for item in replacements:
+        if item:
+            message = message.replace(item, "[hidden]")
+
+    if "Access denied" in message:
+        return "Access denied. Check tenant database username, password and database privileges."
+
+    if "Unknown database" in message:
+        return "Unknown database. Check tenant database name."
+
+    if "Can't connect" in message or "timed out" in message:
+        return "Cannot connect to tenant database host. Check Remote MySQL access and host settings."
+
+    return "Tenant database connection failed. Check database URL, user privileges and remote MySQL access."
+
+
 def is_admin_user(request: Request):
     return request.session.get("role", "Admin") == "Admin"
 
@@ -4965,7 +4989,7 @@ async def login(
                 "password": password
             }
         ).mappings().first()
-    except Exception:
+    except Exception as error:
         db.close()
 
         return templates.TemplateResponse(
@@ -4973,7 +4997,7 @@ async def login(
             name="login.html",
             context={
                 "request": request,
-                "error": "Company database connection failed. Please verify the selected company database settings.",
+                "error": clean_database_error(error),
                 "tenant": selected_company_context(request),
             },
         )
