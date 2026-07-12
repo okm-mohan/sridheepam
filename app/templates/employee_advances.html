@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block page_title %}Salary Advances{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/hr.css">{% endblock %}
+{% block content %}
+<div class="hr-page">
+    <section class="hr-hero advance-hero"><div><span class="hr-kicker">Payroll Adjustment</span><h1>Salary Advances</h1><p>Maintain each employee's current advance balance used during salary calculation.</p></div><div class="advance-total"><small>Total Advance Balance</small><strong>&#8377; {{ "{:,.2f}".format(total_advances) }}</strong></div></section>
+    <section class="hr-panel"><div class="hr-panel-heading"><div><span>Advance Register</span><h2>Employee Advance Balances</h2></div><a href="/hr">HR Dashboard</a></div><div class="hr-table-wrap"><table class="hr-table advance-table"><thead><tr><th>Employee</th><th>Department</th><th>Monthly Salary</th><th>Current Advance</th><th>Update</th></tr></thead><tbody>
+        {% for item in employees %}<tr><td><div class="advance-employee">{% if item.photo_path %}<img src="{{ item.photo_path }}" alt="{{ item.employee_name }}">{% else %}<span>{{ item.employee_name[:1]|upper }}</span>{% endif %}<div><strong>{{ item.employee_name }}</strong><small>{{ item.employee_code or item.designation or 'Employee' }}</small></div></div></td><td>{{ item.department or '-' }}</td><td>&#8377; {{ "{:,.2f}".format(item.monthly_salary or 0) }}</td><td><form id="advance{{ item.id }}" method="post" action="/employee-advance/update"></form><input form="advance{{ item.id }}" type="hidden" name="employee_id" value="{{ item.id }}"><div class="advance-input"><i class="bi bi-currency-rupee"></i><input form="advance{{ item.id }}" type="number" min="0" step="0.01" name="advance_amount" value="{{ item.advance_amount or 0 }}"></div></td><td><button form="advance{{ item.id }}" class="advance-save"><i class="bi bi-check2-circle"></i> Save</button></td></tr>{% else %}<tr><td colspan="5" class="hr-empty">No employees available.</td></tr>{% endfor %}
+    </tbody></table></div></section>
+</div>
+{% endblock %}

@@ -98,6 +98,10 @@ Employees
                         <td><span class="employee-status {{ item.status|lower }}">{{ item.status or "Active" }}</span></td>
                         <td>
                             <div class="employee-action-group">
+                                <a href="/employee/profile/{{ item.id }}" class="employee-table-action employee-view-action">
+                                    <i class="bi bi-eye"></i>
+                                    <span>View</span>
+                                </a>
                                 <a href="/employee/edit/{{ item.id }}" class="employee-table-action employee-edit-action">
                                     <i class="bi bi-pencil-square"></i>
                                     <span>Edit</span>

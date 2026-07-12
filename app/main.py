@@ -4731,6 +4731,100 @@ def save_employee_photo(photo: UploadFile = None):
     return f"/static/uploads/employees/{filename}"
 
 
+@app.get("/hr")
+def hr_dashboard(request: Request):
+    db = SessionLocal()
+    summary = db.execute(text("""
+        SELECT
+            COUNT(*) AS total_employees,
+            SUM(CASE WHEN status='Active' THEN 1 ELSE 0 END) AS active_employees,
+            COUNT(DISTINCT NULLIF(department, '')) AS department_count,
+            COALESCE(SUM(advance_amount), 0) AS total_advances
+        FROM employees
+    """)).mappings().first()
+    recent_employees = db.execute(text("""
+        SELECT id, employee_code, employee_name, designation, department,
+               joining_date, photo_path, status
+        FROM employees
+        ORDER BY joining_date DESC, id DESC
+        LIMIT 6
+    """)).mappings().all()
+    db.close()
+    return templates.TemplateResponse(
+        request=request,
+        name="hr_dashboard.html",
+        context={
+            "request": request,
+            "summary": summary,
+            "recent_employees": recent_employees,
+        },
+    )
+
+
+@app.get("/employee/profile/{employee_id}")
+def employee_profile(employee_id: int, request: Request):
+    db = SessionLocal()
+    employee = db.execute(text("""
+        SELECT * FROM employees WHERE id=:employee_id
+    """), {"employee_id": employee_id}).mappings().first()
+    if not employee:
+        db.close()
+        raise HTTPException(status_code=404, detail="Employee not found")
+    attendance = db.execute(text("""
+        SELECT * FROM employee_attendance
+        WHERE employee_id=:employee_id
+        ORDER BY attendance_year DESC, attendance_month DESC
+        LIMIT 12
+    """), {"employee_id": employee_id}).mappings().all()
+    db.close()
+    return templates.TemplateResponse(
+        request=request,
+        name="employee_profile.html",
+        context={"request": request, "employee": employee, "attendance": attendance},
+    )
+
+
+@app.get("/employee-advances")
+def employee_advances(request: Request):
+    db = SessionLocal()
+    employees = db.execute(text("""
+        SELECT id, employee_code, employee_name, designation, department,
+               monthly_salary, advance_amount, photo_path, status
+        FROM employees
+        ORDER BY employee_name
+    """)).mappings().all()
+    total_advances = sum(float(item.advance_amount or 0) for item in employees)
+    db.close()
+    return templates.TemplateResponse(
+        request=request,
+        name="employee_advances.html",
+        context={
+            "request": request,
+            "employees": employees,
+            "total_advances": total_advances,
+        },
+    )
+
+
+@app.post("/employee-advance/update")
+def employee_advance_update(
+    employee_id: int = Form(...),
+    advance_amount: float = Form(0),
+):
+    db = SessionLocal()
+    db.execute(text("""
+        UPDATE employees
+        SET advance_amount=:advance_amount
+        WHERE id=:employee_id
+    """), {
+        "employee_id": employee_id,
+        "advance_amount": max(0, advance_amount),
+    })
+    db.commit()
+    db.close()
+    return RedirectResponse("/employee-advances", status_code=303)
+
+
 @app.get("/employees")
 def employees(request: Request):
 

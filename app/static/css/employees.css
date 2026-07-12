@@ -299,6 +299,7 @@
 }
 
 .employee-edit-action{ color:#0369a1; background:#e0f2fe; }
+.employee-view-action{ color:#047857; background:#dcfce7; }
 .employee-delete-action{ color:#be123c; background:#ffe4e6; }
 
 .employee-empty-state{
