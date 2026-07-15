@@ -29,6 +29,17 @@ Purchase
 
     </section>
 
+    {% if saved %}
+    <div class="purchase-save-confirmation" role="status" aria-live="polite">
+        <span><i class="bi bi-check-circle-fill"></i></span>
+        <div>
+            <strong>Purchase saved successfully</strong>
+            <p>{% if save_source == 'ocr' %}The invoice was read by OCR, the purchase entry was created and stock was updated automatically.{% else %}The purchase entry and stock quantities have been updated.{% endif %}</p>
+        </div>
+        <button type="button" data-dismiss-purchase-message aria-label="Close confirmation"><i class="bi bi-x-lg"></i></button>
+    </div>
+    {% endif %}
+
     <section class="purchase-summary">
 
         <div class="purchase-summary-tile">
@@ -271,6 +282,12 @@ Purchase
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const saveMessage = document.querySelector(".purchase-save-confirmation");
+    const dismissSaveMessage = document.querySelector("[data-dismiss-purchase-message]");
+    if (saveMessage && dismissSaveMessage) {
+        dismissSaveMessage.addEventListener("click", function () { saveMessage.remove(); });
+    }
+
     const modalElement = document.getElementById("deletePurchaseModal");
     const confirmButton = document.getElementById("confirmDeletePurchase");
     const purchaseNo = document.getElementById("deletePurchaseNo");

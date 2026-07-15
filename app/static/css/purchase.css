@@ -553,3 +553,4 @@
         width:100%;
     }
 }
+.purchase-save-confirmation{display:flex;align-items:center;gap:13px;padding:15px 17px;border:1px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;box-shadow:0 10px 25px rgba(22,101,52,.08)}.purchase-save-confirmation>span{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#dcfce7;font-size:20px}.purchase-save-confirmation strong,.purchase-save-confirmation p{display:block;margin:0}.purchase-save-confirmation p{margin-top:2px;color:#4b7a5c;font-size:13px}.purchase-save-confirmation button{margin-left:auto;border:0;background:transparent;color:#4b7a5c}

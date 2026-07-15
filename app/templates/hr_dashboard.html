@@ -3,20 +3,16 @@
 {% block extra_css %}<link rel="stylesheet" href="/static/css/hr.css">{% endblock %}
 {% block content %}
 <div class="hr-page">
-    <section class="hr-hero"><div><span class="hr-kicker">People Operations</span><h1>HR Department</h1><p>Manage employee records, attendance, salary processing and advance balances from one workspace.</p></div><a href="/employee/add" class="hr-hero-button"><i class="bi bi-person-plus"></i> Add Employee</a></section>
+    <section class="hr-hero"><div><span class="hr-kicker">People Operations</span><h1>HR Department</h1><p>Manage employee records, attendance and salary processing from one workspace.</p></div><a href="/employee/add" class="hr-hero-button"><i class="bi bi-person-plus"></i> Add Employee</a></section>
     <section class="hr-summary">
         <article><span class="hr-summary-icon blue"><i class="bi bi-people"></i></span><div><small>Total Employees</small><strong>{{ summary.total_employees or 0 }}</strong></div></article>
         <article><span class="hr-summary-icon green"><i class="bi bi-person-check"></i></span><div><small>Active Employees</small><strong>{{ summary.active_employees or 0 }}</strong></div></article>
         <article><span class="hr-summary-icon violet"><i class="bi bi-diagram-3"></i></span><div><small>Departments</small><strong>{{ summary.department_count or 0 }}</strong></div></article>
-        <article><span class="hr-summary-icon orange"><i class="bi bi-wallet2"></i></span><div><small>Salary Advances</small><strong>&#8377; {{ "{:,.2f}".format(summary.total_advances or 0) }}</strong></div></article>
     </section>
     <section class="hr-panel"><div class="hr-panel-heading"><div><span>HR Workspaces</span><h2>People Management</h2></div><p>Select an option to continue</p></div><div class="hr-module-grid">
         <a href="/employees" class="hr-module blue"><span><i class="bi bi-person-lines-fill"></i></span><div><h3>Employees List</h3><p>Browse, create, edit and manage employee records.</p></div><i class="bi bi-arrow-right"></i></a>
-        <a href="/employees" class="hr-module cyan"><span><i class="bi bi-person-vcard"></i></span><div><h3>Employee Profiles</h3><p>Open the employee list and select View for full profiles.</p></div><i class="bi bi-arrow-right"></i></a>
         <a href="/employee-attendance" class="hr-module green"><span><i class="bi bi-calendar-check"></i></span><div><h3>Attendance</h3><p>Maintain monthly attendance, leave and overtime.</p></div><i class="bi bi-arrow-right"></i></a>
-        <a href="/employee-advances" class="hr-module orange"><span><i class="bi bi-cash-coin"></i></span><div><h3>Salary Advances</h3><p>Review and update employee advance balances.</p></div><i class="bi bi-arrow-right"></i></a>
         <a href="/salary-receipt" class="hr-module violet"><span><i class="bi bi-receipt-cutoff"></i></span><div><h3>Salary & Receipts</h3><p>Calculate and print monthly salary receipts.</p></div><i class="bi bi-arrow-right"></i></a>
-        <a href="/users" class="hr-module slate"><span><i class="bi bi-shield-lock"></i></span><div><h3>Users & Roles</h3><p>Control application access for staff members.</p></div><i class="bi bi-arrow-right"></i></a>
     </div></section>
     <section class="hr-panel"><div class="hr-panel-heading"><div><span>Recently Added</span><h2>Latest Employees</h2></div><a href="/employees">View all</a></div><div class="hr-employee-grid">
         {% for item in recent_employees %}<a class="hr-employee-card" href="/employee/profile/{{ item.id }}">{% if item.photo_path %}<img src="{{ item.photo_path }}" alt="{{ item.employee_name }}">{% else %}<span class="hr-avatar">{{ item.employee_name[:1]|upper }}</span>{% endif %}<div><strong>{{ item.employee_name }}</strong><small>{{ item.designation or 'Employee' }}{% if item.department %} &middot; {{ item.department }}{% endif %}</small></div><span class="hr-status {{ item.status|lower }}">{{ item.status }}</span></a>{% else %}<p class="hr-empty">No employee records available.</p>{% endfor %}

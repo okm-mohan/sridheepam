@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Summary - {{ month_name }} {{ year }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/attendance_summary.css">
+</head>
+<body>
+    <header class="report-toolbar">
+        <div>
+            <a href="/employee-attendance?month={{ month }}&year={{ year }}" class="report-button secondary">
+                <i class="bi bi-arrow-left"></i> Back to Attendance
+            </a>
+        </div>
+        <div class="report-pagination" {% if pages|length <= 1 %}hidden{% endif %}>
+            <button type="button" class="report-button secondary" data-page-action="previous"><i class="bi bi-chevron-left"></i></button>
+            <span>Page <strong data-current-page>1</strong> of {{ pages|length }}</span>
+            <button type="button" class="report-button secondary" data-page-action="next"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <button type="button" class="report-button primary" data-print-report>
+            <i class="bi bi-printer"></i> Landscape Print Preview
+        </button>
+    </header>
+
+    <main class="report-preview" data-page-count="{{ pages|length }}">
+        {% for page_rows in pages %}
+        <section class="report-page {% if not loop.first %}screen-hidden{% endif %}" data-report-page="{{ loop.index }}">
+            <div class="report-heading">
+                <div class="report-company">
+                    {% if company.company_logo_url %}
+                    <img src="{{ company.company_logo_url }}" alt="{{ company.company_name }}">
+                    {% else %}
+                    <span class="report-logo"><i class="bi bi-building-fill-gear"></i></span>
+                    {% endif %}
+                    <div>
+                        <h1>{{ company.company_name }}</h1>
+                        <p>{{ company.company_tagline }}</p>
+                    </div>
+                </div>
+                <div class="report-title">
+                    <span>HR Department</span>
+                    <h2>Employee Attendance Summary</h2>
+                    <p>{{ month_name }} {{ year }} &middot; {{ employee_count }} Employees</p>
+                </div>
+            </div>
+
+            <div class="report-legend">
+                <span><b class="status-p">P</b> Present</span>
+                <span><b class="status-a">A</b> Absent</span>
+                <span><b class="status-l">L</b> Leave</span>
+                <span><b class="status-hd">HD</b> Half Day</span>
+                <span><b class="status-wo">WO</b> Week Off</span>
+                <span><b class="status-h">H</b> Holiday</span>
+            </div>
+
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th class="summary-employee-heading">Employee</th>
+                        {% for day in days %}
+                        <th class="summary-day-heading {% if day.is_weekend %}weekend{% endif %}">
+                            <span>{{ day.weekday[:1] }}</span><strong>{{ day.number }}</strong>
+                        </th>
+                        {% endfor %}
+                        <th class="summary-total present">P</th>
+                        <th class="summary-total leave">L</th>
+                        <th class="summary-total absent">A</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in page_rows %}
+                    <tr>
+                        <td class="summary-employee">
+                            {% if item.photo_path %}
+                            <img src="{{ item.photo_path }}" alt="{{ item.employee_name }}">
+                            {% else %}
+                            <span class="summary-photo-fallback"><i class="bi bi-person-fill"></i></span>
+                            {% endif %}
+                            <div><strong>{{ item.employee_name }}</strong><small>{{ item.employee_code or item.designation or 'Employee' }}</small></div>
+                        </td>
+                        {% for day in days %}
+                        {% set status = item.daily_attendance.get(day.number, '') %}
+                        <td class="summary-status-cell {% if day.is_weekend %}weekend{% endif %}">
+                            <span class="status-{{ status|lower if status else 'blank' }}">{{ status or '-' }}</span>
+                        </td>
+                        {% endfor %}
+                        <td class="summary-total present">{{ item.present_total|int if item.present_total == item.present_total|int else item.present_total }}</td>
+                        <td class="summary-total leave">{{ item.leave_total|int if item.leave_total == item.leave_total|int else item.leave_total }}</td>
+                        <td class="summary-total absent">{{ item.absent_total|int if item.absent_total == item.absent_total|int else item.absent_total }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td class="report-empty" colspan="{{ days|length + 4 }}">No active employees found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <footer class="report-footer">
+                <span>Generated from ManPro Plus</span>
+                <span>Page {{ loop.index }} of {{ pages|length }}</span>
+                <span>Authorized Signature: ____________________</span>
+            </footer>
+        </section>
+        {% endfor %}
+    </main>
+    <script src="/static/js/attendance_summary.js"></script>
+</body>
+</html>

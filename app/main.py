@@ -1228,7 +1228,13 @@ def update_customer(
 
 
 @app.get("/purchase", response_class=HTMLResponse)
-async def purchase_page(request: Request, from_date: str = None, to_date: str = None):
+async def purchase_page(
+    request: Request,
+    from_date: str = None,
+    to_date: str = None,
+    saved: int = 0,
+    source: str = "",
+):
 
     db = SessionLocal()
 
@@ -1303,6 +1309,8 @@ async def purchase_page(request: Request, from_date: str = None, to_date: str = 
             "today_amount": today_amount,
             "from_date": from_date,
             "to_date": to_date,
+            "saved": bool(saved),
+            "save_source": source,
         },
     )
 
@@ -1363,6 +1371,21 @@ def purchase_add(request: Request):
     )
 
 
+def ensure_purchase_ocr_columns(db):
+    columns = db.execute(text("SHOW COLUMNS FROM purchase")).mappings().all()
+    existing_columns = {column["Field"] for column in columns}
+    required_columns = {
+        "invoice_image_path": "VARCHAR(500) NULL",
+        "ocr_text": "LONGTEXT NULL",
+        "ocr_confidence": "DECIMAL(5,2) NULL",
+        "entry_source": "VARCHAR(30) NULL",
+    }
+
+    for column_name, column_type in required_columns.items():
+        if column_name not in existing_columns:
+            db.execute(text(f"ALTER TABLE purchase ADD COLUMN {column_name} {column_type}"))
+
+
 @app.post("/purchase/save")
 async def purchase_save(request: Request):
 
@@ -1373,6 +1396,9 @@ async def purchase_save(request: Request):
     supplier_id = int(form.get("supplier_id"))
     invoice_no = form.get("invoice_no", "")
     invoice_date = form.get("invoice_date", "")
+    ocr_text = (form.get("ocr_text") or "").strip()
+    ocr_confidence = float(form.get("ocr_confidence") or 0)
+    entry_source = (form.get("entry_source") or "Manual").strip()[:30]
 
     material_id = form.getlist("material_id")
     qty = form.getlist("qty")
@@ -1382,6 +1408,36 @@ async def purchase_save(request: Request):
     line_total = form.getlist("line_total")
 
     db = SessionLocal()
+
+    ensure_purchase_ocr_columns(db)
+
+    invoice_image = None
+    for field_name in ("invoice_image_camera", "invoice_image_upload"):
+        candidate = form.get(field_name)
+        if candidate and getattr(candidate, "filename", ""):
+            invoice_image = candidate
+            break
+
+    invoice_image_path = None
+    if invoice_image:
+        image_bytes = await invoice_image.read()
+        if len(image_bytes) > 10 * 1024 * 1024:
+            db.close()
+            raise HTTPException(status_code=400, detail="Invoice image must be 10 MB or smaller")
+
+        extension = os.path.splitext(invoice_image.filename or "")[1].lower()
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+        if extension not in allowed_extensions:
+            db.close()
+            raise HTTPException(status_code=400, detail="Invoice image must be JPG, PNG or WebP")
+
+        upload_directory = "app/static/uploads/purchase_invoices"
+        os.makedirs(upload_directory, exist_ok=True)
+        stored_filename = f"{uuid.uuid4().hex}{extension}"
+        stored_path = os.path.join(upload_directory, stored_filename)
+        with open(stored_path, "wb") as invoice_file:
+            invoice_file.write(image_bytes)
+        invoice_image_path = f"/static/uploads/purchase_invoices/{stored_filename}"
 
     grand_total = sum(float(x or 0) for x in line_total)
 
@@ -1394,7 +1450,11 @@ async def purchase_save(request: Request):
                 supplier_id,
                 invoice_no,
                 invoice_date,
-                grand_total
+                grand_total,
+                invoice_image_path,
+                ocr_text,
+                ocr_confidence,
+                entry_source
             )
             VALUES
             (
@@ -1403,7 +1463,11 @@ async def purchase_save(request: Request):
                 :supplier_id,
                 :invoice_no,
                 :invoice_date,
-                :grand_total
+                :grand_total,
+                :invoice_image_path,
+                :ocr_text,
+                :ocr_confidence,
+                :entry_source
             )
         """),
         {
@@ -1413,6 +1477,10 @@ async def purchase_save(request: Request):
             "invoice_no": invoice_no,
             "invoice_date": invoice_date if invoice_date else None,
             "grand_total": grand_total,
+            "invoice_image_path": invoice_image_path,
+            "ocr_text": ocr_text or None,
+            "ocr_confidence": ocr_confidence or None,
+            "entry_source": entry_source,
         },
     )
 
@@ -1469,7 +1537,8 @@ async def purchase_save(request: Request):
     db.commit()
     db.close()
 
-    return RedirectResponse(url="/purchase", status_code=303)
+    saved_source = "ocr" if entry_source.lower() == "ocr" else "manual"
+    return RedirectResponse(url=f"/purchase?saved=1&source={saved_source}", status_code=303)
 
 
 @app.get("/purchase/delete/{purchase_id}")
@@ -3571,6 +3640,215 @@ def customer_outstanding_report(
     )
 
 
+def ensure_payment_reminder_table(db):
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS payment_reminder_history
+        (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_id INT NOT NULL,
+            channel VARCHAR(20) NOT NULL,
+            message TEXT,
+            reminder_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            next_followup_date DATE NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'Prepared',
+            created_by VARCHAR(120),
+            INDEX idx_reminder_customer (customer_id),
+            INDEX idx_reminder_followup (next_followup_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """))
+
+
+@app.get("/payment-reminders")
+def payment_reminders(request: Request, search: str = "", aging: str = "all"):
+    db = SessionLocal()
+    ensure_payment_reminder_table(db)
+
+    customer_rows = db.execute(text("""
+        SELECT
+            c.id,
+            c.customer_name,
+            c.company_name,
+            c.mobile,
+            c.email,
+            IFNULL(s.sale_count, 0) AS sale_count,
+            IFNULL(s.sale_amount, 0) AS sale_amount,
+            s.oldest_sale_date,
+            s.latest_sale_date,
+            IFNULL(pay.received_amount, 0) AS received_amount,
+            IFNULL(s.sale_amount, 0) - IFNULL(pay.received_amount, 0) AS balance_amount,
+            pay.last_payment_date
+        FROM customers c
+        LEFT JOIN
+        (
+            SELECT
+                customer_id,
+                COUNT(*) AS sale_count,
+                SUM(grand_total) AS sale_amount,
+                MIN(sale_date) AS oldest_sale_date,
+                MAX(sale_date) AS latest_sale_date
+            FROM sales
+            GROUP BY customer_id
+        ) s ON s.customer_id = c.id
+        LEFT JOIN
+        (
+            SELECT
+                customer_id,
+                SUM(amount) AS received_amount,
+                MAX(payment_date) AS last_payment_date
+            FROM customer_payments
+            GROUP BY customer_id
+        ) pay ON pay.customer_id = c.id
+        ORDER BY balance_amount DESC, c.customer_name
+    """)).mappings().all()
+
+    reminder_rows = db.execute(text("""
+        SELECT
+            h.*,
+            c.customer_name
+        FROM payment_reminder_history h
+        LEFT JOIN customers c ON c.id = h.customer_id
+        ORDER BY h.reminder_date DESC, h.id DESC
+        LIMIT 50
+    """)).mappings().all()
+
+    latest_reminder_map = {}
+    for reminder in reminder_rows:
+        if reminder.customer_id not in latest_reminder_map:
+            latest_reminder_map[reminder.customer_id] = reminder
+
+    today = date.today()
+    pending_customers = []
+    normalized_search = (search or "").strip().lower()
+    valid_aging = {"all", "current", "1-30", "31-60", "61-90", "90+"}
+    if aging not in valid_aging:
+        aging = "all"
+
+    for row in customer_rows:
+        item = dict(row)
+        balance = float(item.get("balance_amount") or 0)
+        if balance <= 0:
+            continue
+
+        oldest_sale = item.get("oldest_sale_date")
+        estimated_due_date = oldest_sale + timedelta(days=30) if oldest_sale else None
+        days_overdue = max((today - estimated_due_date).days, 0) if estimated_due_date else 0
+
+        if days_overdue == 0:
+            aging_bucket = "current"
+            aging_label = "Not overdue"
+        elif days_overdue <= 30:
+            aging_bucket = "1-30"
+            aging_label = "1-30 days"
+        elif days_overdue <= 60:
+            aging_bucket = "31-60"
+            aging_label = "31-60 days"
+        elif days_overdue <= 90:
+            aging_bucket = "61-90"
+            aging_label = "61-90 days"
+        else:
+            aging_bucket = "90+"
+            aging_label = "90+ days"
+
+        if days_overdue > 90:
+            priority = "critical"
+            priority_label = "Critical"
+        elif days_overdue > 60:
+            priority = "high"
+            priority_label = "High"
+        elif days_overdue > 30:
+            priority = "medium"
+            priority_label = "Medium"
+        else:
+            priority = "normal"
+            priority_label = "Normal"
+
+        searchable = " ".join([
+            str(item.get("customer_name") or ""),
+            str(item.get("company_name") or ""),
+            str(item.get("mobile") or ""),
+            str(item.get("email") or ""),
+        ]).lower()
+
+        if normalized_search and normalized_search not in searchable:
+            continue
+        if aging != "all" and aging_bucket != aging:
+            continue
+
+        last_reminder = latest_reminder_map.get(item["id"])
+        item.update({
+            "balance_amount": balance,
+            "estimated_due_date": estimated_due_date,
+            "days_overdue": days_overdue,
+            "aging_bucket": aging_bucket,
+            "aging_label": aging_label,
+            "priority": priority,
+            "priority_label": priority_label,
+            "last_reminder": last_reminder,
+            "has_contact": bool(item.get("mobile") or item.get("email")),
+        })
+        pending_customers.append(item)
+
+    all_pending_balances = [float(row.balance_amount or 0) for row in customer_rows if float(row.balance_amount or 0) > 0]
+    overdue_count = sum(1 for item in pending_customers if item["days_overdue"] > 0)
+    critical_count = sum(1 for item in pending_customers if item["days_overdue"] > 90)
+    missing_contact_count = sum(1 for item in pending_customers if not item["has_contact"])
+
+    db.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="payment_reminders.html",
+        context={
+            "request": request,
+            "customers": pending_customers,
+            "history": reminder_rows,
+            "search": search,
+            "aging": aging,
+            "today": today,
+            "default_followup": (today + timedelta(days=3)).strftime("%Y-%m-%d"),
+            "total_pending": sum(all_pending_balances),
+            "pending_count": len(all_pending_balances),
+            "overdue_count": overdue_count,
+            "critical_count": critical_count,
+            "missing_contact_count": missing_contact_count,
+            "company_name": request.session.get("tenant_company_name", "ManPro Plus"),
+        },
+    )
+
+
+@app.post("/payment-reminders/log")
+async def payment_reminder_log(request: Request):
+    form = await request.form()
+    customer_id = int(form.get("customer_id") or 0)
+    channel = (form.get("channel") or "").strip().title()
+    message = (form.get("message") or "").strip()
+    next_followup_date = (form.get("next_followup_date") or "").strip() or None
+
+    if not customer_id or channel not in {"Sms", "Whatsapp", "Email", "Phone"}:
+        return JSONResponse({"ok": False, "message": "Invalid reminder details"}, status_code=400)
+
+    db = SessionLocal()
+    ensure_payment_reminder_table(db)
+    db.execute(
+        text("""
+            INSERT INTO payment_reminder_history
+            (customer_id, channel, message, next_followup_date, status, created_by)
+            VALUES (:customer_id, :channel, :message, :next_followup_date, 'Prepared', :created_by)
+        """),
+        {
+            "customer_id": customer_id,
+            "channel": channel,
+            "message": message,
+            "next_followup_date": next_followup_date,
+            "created_by": request.session.get("full_name", request.session.get("user", "Administrator")),
+        },
+    )
+    db.commit()
+    db.close()
+
+    return JSONResponse({"ok": True, "message": "Reminder activity recorded"})
+
+
 @app.post("/customer-payment/save")
 def customer_payment_save(
     customer_id: int = Form(...),
@@ -5058,6 +5336,8 @@ def employee_delete(employee_id: int):
 
     db = SessionLocal()
 
+    ensure_daily_attendance_table(db)
+    db.execute(text("DELETE FROM employee_daily_attendance WHERE employee_id=:employee_id"), {"employee_id": employee_id})
     db.execute(text("DELETE FROM employee_attendance WHERE employee_id=:employee_id"), {"employee_id": employee_id})
     db.execute(text("DELETE FROM employees WHERE id=:employee_id"), {"employee_id": employee_id})
 
@@ -5067,8 +5347,24 @@ def employee_delete(employee_id: int):
     return RedirectResponse("/employees", status_code=303)
 
 
+def ensure_daily_attendance_table(db):
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS employee_daily_attendance
+        (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NOT NULL,
+            attendance_date DATE NOT NULL,
+            status VARCHAR(10) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_employee_daily_attendance (employee_id, attendance_date),
+            INDEX idx_daily_attendance_date (attendance_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """))
+
+
 @app.get("/employee-attendance")
-def employee_attendance(request: Request, month: int = 0, year: int = 0):
+def employee_attendance(request: Request, month: int = 0, year: int = 0, saved: int = 0):
 
     today = date.today()
 
@@ -5078,7 +5374,12 @@ def employee_attendance(request: Request, month: int = 0, year: int = 0):
     if not year:
         year = today.year
 
+    if month < 1 or month > 12 or year < 2000 or year > 2100:
+        raise HTTPException(status_code=400, detail="Invalid attendance month or year")
+
     db = SessionLocal()
+
+    ensure_daily_attendance_table(db)
 
     employees = db.execute(text("""
         SELECT
@@ -5086,6 +5387,7 @@ def employee_attendance(request: Request, month: int = 0, year: int = 0):
             employee_code,
             employee_name,
             designation,
+            photo_path,
             monthly_salary,
             advance_amount
         FROM employees
@@ -5105,12 +5407,54 @@ def employee_attendance(request: Request, month: int = 0, year: int = 0):
 
     attendance_map = {row.employee_id: row for row in attendance}
     days_in_month = calendar.monthrange(year, month)[1]
+    month_start = date(year, month, 1)
+    month_end = date(year, month, days_in_month)
+
+    daily_attendance = db.execute(
+        text("""
+            SELECT employee_id, attendance_date, status
+            FROM employee_daily_attendance
+            WHERE attendance_date BETWEEN :month_start AND :month_end
+        """),
+        {"month_start": month_start, "month_end": month_end},
+    ).mappings().all()
+
+    daily_map = {}
+    for entry in daily_attendance:
+        daily_map.setdefault(entry.employee_id, {})[entry.attendance_date.day] = entry.status
+
+    days = []
+    for day_number in range(1, days_in_month + 1):
+        attendance_date = date(year, month, day_number)
+        days.append({
+            "number": day_number,
+            "weekday": attendance_date.strftime("%a"),
+            "is_weekend": attendance_date.weekday() == 6,
+        })
 
     rows = []
 
     for employee in employees:
         item = dict(employee)
-        item["attendance"] = attendance_map.get(employee.id)
+        monthly_attendance = attendance_map.get(employee.id)
+        employee_daily = daily_map.get(employee.id, {})
+
+        # Older records contain monthly totals only. Show those totals as daily
+        # marks until the user saves the new daily sheet for that month.
+        if not employee_daily and monthly_attendance:
+            present_days = int(float(monthly_attendance.present_days or 0))
+            leave_days = int(float(monthly_attendance.leave_days or 0))
+            absent_days = int(float(monthly_attendance.absent_days or 0))
+            day_number = 1
+            for status, count in (("P", present_days), ("L", leave_days), ("A", absent_days)):
+                for _ in range(count):
+                    if day_number > days_in_month:
+                        break
+                    employee_daily[day_number] = status
+                    day_number += 1
+
+        item["attendance"] = monthly_attendance
+        item["daily_attendance"] = employee_daily
         rows.append(item)
 
     db.close()
@@ -5124,6 +5468,9 @@ def employee_attendance(request: Request, month: int = 0, year: int = 0):
             "month": month,
             "year": year,
             "days_in_month": days_in_month,
+            "days": days,
+            "current_day": today.day if month == today.month and year == today.year else None,
+            "saved": bool(saved),
             "years": list(range(today.year - 3, today.year + 2)),
             "months": [
                 {"id": 1, "name": "January"},
@@ -5143,6 +5490,119 @@ def employee_attendance(request: Request, month: int = 0, year: int = 0):
     )
 
 
+@app.get("/employee-attendance/summary")
+def employee_attendance_summary(request: Request, month: int = 0, year: int = 0):
+    today = date.today()
+    month = month or today.month
+    year = year or today.year
+
+    if month < 1 or month > 12 or year < 2000 or year > 2100:
+        raise HTTPException(status_code=400, detail="Invalid attendance month or year")
+
+    db = SessionLocal()
+    ensure_daily_attendance_table(db)
+
+    employees = db.execute(text("""
+        SELECT id, employee_code, employee_name, designation, photo_path
+        FROM employees
+        WHERE status='Active'
+        ORDER BY employee_name
+    """)).mappings().all()
+
+    monthly_rows = db.execute(
+        text("""
+            SELECT * FROM employee_attendance
+            WHERE attendance_month=:month AND attendance_year=:year
+        """),
+        {"month": month, "year": year},
+    ).mappings().all()
+    monthly_map = {row.employee_id: row for row in monthly_rows}
+
+    days_in_month = calendar.monthrange(year, month)[1]
+    month_start = date(year, month, 1)
+    month_end = date(year, month, days_in_month)
+    daily_rows = db.execute(
+        text("""
+            SELECT employee_id, attendance_date, status
+            FROM employee_daily_attendance
+            WHERE attendance_date BETWEEN :month_start AND :month_end
+        """),
+        {"month_start": month_start, "month_end": month_end},
+    ).mappings().all()
+
+    daily_map = {}
+    for entry in daily_rows:
+        daily_map.setdefault(entry.employee_id, {})[entry.attendance_date.day] = entry.status
+
+    days = []
+    for day_number in range(1, days_in_month + 1):
+        attendance_date = date(year, month, day_number)
+        days.append({
+            "number": day_number,
+            "weekday": attendance_date.strftime("%a"),
+            "is_weekend": attendance_date.weekday() == 6,
+        })
+
+    report_rows = []
+    for employee in employees:
+        daily = daily_map.get(employee.id, {})
+        monthly = monthly_map.get(employee.id)
+
+        if not daily and monthly:
+            present_days = int(float(monthly.present_days or 0))
+            leave_days = int(float(monthly.leave_days or 0))
+            absent_days = int(float(monthly.absent_days or 0))
+            day_number = 1
+            for status, count in (("P", present_days), ("L", leave_days), ("A", absent_days)):
+                for _ in range(count):
+                    if day_number > days_in_month:
+                        break
+                    daily[day_number] = status
+                    day_number += 1
+
+        present_total = 0.0
+        leave_total = 0.0
+        absent_total = 0.0
+        for status in daily.values():
+            if status == "P":
+                present_total += 1
+            elif status == "HD":
+                present_total += 0.5
+                absent_total += 0.5
+            elif status in {"L", "WO", "H"}:
+                leave_total += 1
+            elif status == "A":
+                absent_total += 1
+
+        item = dict(employee)
+        item["daily_attendance"] = daily
+        item["present_total"] = present_total
+        item["leave_total"] = leave_total
+        item["absent_total"] = absent_total
+        report_rows.append(item)
+
+    db.close()
+
+    rows_per_page = 10
+    pages = [report_rows[index:index + rows_per_page] for index in range(0, len(report_rows), rows_per_page)] or [[]]
+    month_name = calendar.month_name[month]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="employee_attendance_summary.html",
+        context={
+            "request": request,
+            "company": selected_company_context(request),
+            "month": month,
+            "month_name": month_name,
+            "year": year,
+            "days": days,
+            "pages": pages,
+            "employee_count": len(report_rows),
+        },
+    )
+
+
 @app.post("/employee-attendance/save")
 async def employee_attendance_save(request: Request):
 
@@ -5150,11 +5610,66 @@ async def employee_attendance_save(request: Request):
 
     month = int(form.get("month"))
     year = int(form.get("year"))
-    employee_ids = form.getlist("employee_id")
+    employee_ids = list(dict.fromkeys(form.getlist("employee_id")))
+
+    if month < 1 or month > 12 or year < 2000 or year > 2100:
+        raise HTTPException(status_code=400, detail="Invalid attendance month or year")
 
     db = SessionLocal()
 
+    ensure_daily_attendance_table(db)
+    days_in_month = calendar.monthrange(year, month)[1]
+    month_start = date(year, month, 1)
+    month_end = date(year, month, days_in_month)
+    allowed_statuses = {"P", "A", "L", "HD", "WO", "H"}
+
     for employee_id in employee_ids:
+        employee_id = int(employee_id)
+        db.execute(
+            text("""
+                DELETE FROM employee_daily_attendance
+                WHERE employee_id=:employee_id
+                AND attendance_date BETWEEN :month_start AND :month_end
+            """),
+            {
+                "employee_id": employee_id,
+                "month_start": month_start,
+                "month_end": month_end,
+            },
+        )
+
+        present_days = 0.0
+        leave_days = 0.0
+        absent_days = 0.0
+
+        for day_number in range(1, days_in_month + 1):
+            status = (form.get(f"status_{employee_id}_{day_number}") or "").strip().upper()
+            if status not in allowed_statuses:
+                continue
+
+            db.execute(
+                text("""
+                    INSERT INTO employee_daily_attendance
+                    (employee_id, attendance_date, status)
+                    VALUES (:employee_id, :attendance_date, :status)
+                """),
+                {
+                    "employee_id": employee_id,
+                    "attendance_date": date(year, month, day_number),
+                    "status": status,
+                },
+            )
+
+            if status == "P":
+                present_days += 1
+            elif status == "HD":
+                present_days += 0.5
+                absent_days += 0.5
+            elif status in {"L", "WO", "H"}:
+                leave_days += 1
+            elif status == "A":
+                absent_days += 1
+
         db.execute(
             text("""
                 INSERT INTO employee_attendance
@@ -5190,12 +5705,12 @@ async def employee_attendance_save(request: Request):
                     remarks=VALUES(remarks)
             """),
             {
-                "employee_id": int(employee_id),
+                "employee_id": employee_id,
                 "month": month,
                 "year": year,
-                "present_days": float(form.get(f"present_days_{employee_id}") or 0),
-                "leave_days": float(form.get(f"leave_days_{employee_id}") or 0),
-                "absent_days": float(form.get(f"absent_days_{employee_id}") or 0),
+                "present_days": present_days,
+                "leave_days": leave_days,
+                "absent_days": absent_days,
                 "overtime_amount": float(form.get(f"overtime_amount_{employee_id}") or 0),
                 "deduction_amount": float(form.get(f"deduction_amount_{employee_id}") or 0),
                 "remarks": form.get(f"remarks_{employee_id}") or "",
@@ -5205,7 +5720,7 @@ async def employee_attendance_save(request: Request):
     db.commit()
     db.close()
 
-    return RedirectResponse(f"/employee-attendance?month={month}&year={year}", status_code=303)
+    return RedirectResponse(f"/employee-attendance?month={month}&year={year}&saved=1", status_code=303)
 
 
 @app.get("/salary-receipt")

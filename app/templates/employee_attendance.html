@@ -1,29 +1,36 @@
 {% extends "base.html" %}
 
-{% block page_title %}
-Employee Attendance
-{% endblock %}
+{% block page_title %}Employee Attendance{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/employees.css">
+<link rel="stylesheet" href="/static/css/attendance.css">
 {% endblock %}
 
 {% block content %}
-
-<div class="employees-page">
-
+<div class="employees-page attendance-page">
     <section class="employees-hero attendance-hero">
         <div>
-            <span class="employee-kicker">Attendance Desk</span>
+            <span class="employee-kicker">Daily Attendance Sheet</span>
             <h1>Employee Attendance</h1>
-            <p>Enter monthly attendance, leave, absent days, overtime and deductions for salary calculation.</p>
+            <p>Mark daily attendance for every active employee in one monthly sheet.</p>
         </div>
-
-        <a href="/salary-receipt?month={{ month }}&year={{ year }}" class="btn-add-employee">
-            <i class="bi bi-receipt"></i>
-            <span>Salary Receipt</span>
+        <a href="/employee-attendance/summary?month={{ month }}&year={{ year }}" class="btn-add-employee">
+            <i class="bi bi-file-earmark-bar-graph"></i>
+            <span>Attendance Summary</span>
         </a>
     </section>
+
+    {% if saved %}
+    <div class="attendance-save-message" role="status" aria-live="polite">
+        <span><i class="bi bi-check-circle-fill"></i></span>
+        <div>
+            <strong>Attendance saved successfully</strong>
+            <p>Daily attendance and monthly salary totals have been updated.</p>
+        </div>
+        <button type="button" data-dismiss-save-message aria-label="Close confirmation"><i class="bi bi-x-lg"></i></button>
+    </div>
+    {% endif %}
 
     <section class="attendance-filter-panel">
         <form method="get" action="/employee-attendance" class="attendance-filter-form">
@@ -38,7 +45,6 @@ Employee Attendance
                     </select>
                 </div>
             </div>
-
             <div class="employee-form-field">
                 <label>Year</label>
                 <div class="employee-input-shell">
@@ -50,68 +56,127 @@ Employee Attendance
                     </select>
                 </div>
             </div>
-
             <button type="submit" class="btn-save-employee">
                 <i class="bi bi-search"></i>
-                <span>Search</span>
+                <span>Open Sheet</span>
             </button>
         </form>
     </section>
 
-    <section class="employees-panel">
-        <div class="employee-panel-header">
+    <section class="employees-panel attendance-sheet-panel">
+        <div class="employee-panel-header attendance-sheet-header">
             <div>
                 <span class="employee-panel-label">Monthly Attendance</span>
-                <h2>{{ days_in_month }} Days Salary Month</h2>
+                <h2>{{ months[month - 1].name }} {{ year }}</h2>
             </div>
             <span class="employee-record-count">{{ employees|length }} Employees</span>
         </div>
 
-        <form method="post" action="/employee-attendance/save">
+        <div class="attendance-toolbar">
+            <div class="attendance-legend" aria-label="Attendance status legend">
+                <span><b class="status-p">P</b> Present</span>
+                <span><b class="status-a">A</b> Absent</span>
+                <span><b class="status-l">L</b> Leave</span>
+                <span><b class="status-hd">HD</b> Half Day</span>
+                <span><b class="status-wo">WO</b> Week Off</span>
+                <span><b class="status-h">H</b> Holiday</span>
+            </div>
+            <div class="attendance-quick-actions">
+                <button
+                    type="button"
+                    class="attendance-tool-button"
+                    data-fill="current-day"
+                    data-current-day="{{ current_day or '' }}"
+                    {% if not current_day %}disabled title="Open the current month to mark today's attendance"{% endif %}
+                >
+                    <i class="bi bi-people-fill"></i> Mark All Employees Present
+                </button>
+                <button type="button" class="attendance-tool-button" data-fill="working">
+                    <i class="bi bi-calendar-check"></i> Fill Working Days
+                </button>
+                <button type="button" class="attendance-tool-button muted" data-fill="clear">
+                    <i class="bi bi-eraser"></i> Clear Sheet
+                </button>
+            </div>
+        </div>
+
+        <form method="post" action="/employee-attendance/save" id="attendanceSheetForm">
             <input type="hidden" name="month" value="{{ month }}">
             <input type="hidden" name="year" value="{{ year }}">
 
-            <div class="employees-table-wrap">
-                <table class="employees-table attendance-table">
+            <div class="daily-attendance-wrap">
+                <table class="daily-attendance-table">
                     <thead>
                         <tr>
-                            <th>Employee</th>
-                            <th>Salary</th>
-                            <th>Present</th>
-                            <th>Leave</th>
-                            <th>Absent</th>
-                            <th>Overtime</th>
-                            <th>Deduction</th>
-                            <th>Advance</th>
-                            <th>Remarks</th>
+                            <th class="sticky-employee-column employee-heading">Employee</th>
+                            {% for day in days %}
+                            <th class="day-heading {% if day.is_weekend %}weekend{% endif %}" data-day="{{ day.number }}">
+                                <span>{{ day.weekday }}</span>
+                                <strong>{{ day.number }}</strong>
+                            </th>
+                            {% endfor %}
+                            <th class="total-heading present-total-heading">P</th>
+                            <th class="total-heading leave-total-heading">L</th>
+                            <th class="total-heading absent-total-heading">A</th>
+                            <th class="adjustment-heading">Overtime</th>
+                            <th class="adjustment-heading">Deduction</th>
+                            <th class="remarks-heading">Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in employees %}
                         {% set att = item.attendance %}
-                        <tr>
-                            <td>
+                        <tr data-employee-row>
+                            <td class="sticky-employee-column">
                                 <input type="hidden" name="employee_id" value="{{ item.id }}">
                                 <div class="employee-name-cell">
-                                    <span class="employee-avatar">{{ item.employee_name[:1]|upper }}</span>
+                                    {% if item.photo_path %}
+                                    <img class="attendance-employee-photo" src="{{ item.photo_path }}" alt="{{ item.employee_name }}">
+                                    {% else %}
+                                    <span class="attendance-employee-photo fallback"><i class="bi bi-person-fill"></i></span>
+                                    {% endif %}
                                     <div>
                                         <strong>{{ item.employee_name }}</strong>
                                         <small>{{ item.employee_code or item.designation or "Employee" }}</small>
                                     </div>
                                 </div>
                             </td>
-                            <td class="employee-money">&#8377; {{ "%.2f"|format(item.monthly_salary or 0) }}</td>
-                            <td><input type="number" step="0.5" name="present_days_{{ item.id }}" value="{{ att.present_days if att else days_in_month }}"></td>
-                            <td><input type="number" step="0.5" name="leave_days_{{ item.id }}" value="{{ att.leave_days if att else 0 }}"></td>
-                            <td><input type="number" step="0.5" name="absent_days_{{ item.id }}" value="{{ att.absent_days if att else 0 }}"></td>
-                            <td><input type="number" step="0.01" name="overtime_amount_{{ item.id }}" value="{{ att.overtime_amount if att else 0 }}"></td>
-                            <td><input type="number" step="0.01" name="deduction_amount_{{ item.id }}" value="{{ att.deduction_amount if att else 0 }}"></td>
-                            <td class="employee-money employee-advance">&#8377; {{ "%.2f"|format(item.advance_amount or 0) }}</td>
-                            <td><input type="text" name="remarks_{{ item.id }}" value="{{ att.remarks if att else '' }}"></td>
+                            {% for day in days %}
+                            {% set current_status = item.daily_attendance.get(day.number, '') %}
+                            <td class="attendance-cell {% if day.is_weekend %}weekend{% endif %}">
+                                <select
+                                    name="status_{{ item.id }}_{{ day.number }}"
+                                    class="daily-status status-{{ current_status|lower if current_status else 'blank' }}"
+                                    data-day="{{ day.number }}"
+                                    data-weekend="{{ 'true' if day.is_weekend else 'false' }}"
+                                    aria-label="{{ item.employee_name }} attendance for day {{ day.number }}"
+                                >
+                                    <option value="" {% if not current_status %}selected{% endif %}>-</option>
+                                    <option value="P" {% if current_status == 'P' %}selected{% endif %}>P</option>
+                                    <option value="A" {% if current_status == 'A' %}selected{% endif %}>A</option>
+                                    <option value="L" {% if current_status == 'L' %}selected{% endif %}>L</option>
+                                    <option value="HD" {% if current_status == 'HD' %}selected{% endif %}>HD</option>
+                                    <option value="WO" {% if current_status == 'WO' %}selected{% endif %}>WO</option>
+                                    <option value="H" {% if current_status == 'H' %}selected{% endif %}>H</option>
+                                </select>
+                            </td>
+                            {% endfor %}
+                            <td class="row-total present-total" data-total="present">0</td>
+                            <td class="row-total leave-total" data-total="leave">0</td>
+                            <td class="row-total absent-total" data-total="absent">0</td>
+                            <td class="adjustment-cell">
+                                <input type="number" step="0.01" min="0" name="overtime_amount_{{ item.id }}" value="{{ att.overtime_amount if att else 0 }}" aria-label="Overtime amount for {{ item.employee_name }}">
+                            </td>
+                            <td class="adjustment-cell">
+                                <input type="number" step="0.01" min="0" name="deduction_amount_{{ item.id }}" value="{{ att.deduction_amount if att else 0 }}" aria-label="Deduction amount for {{ item.employee_name }}">
+                            </td>
+                            <td class="remarks-cell">
+                                <input type="text" name="remarks_{{ item.id }}" value="{{ att.remarks if att else '' }}" placeholder="Optional" aria-label="Remarks for {{ item.employee_name }}">
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="9">
+                            <td colspan="{{ days_in_month + 7 }}">
                                 <div class="employee-empty-state">
                                     <i class="bi bi-calendar-x"></i>
                                     <strong>No active employees found</strong>
@@ -124,15 +189,18 @@ Employee Attendance
                 </table>
             </div>
 
-            <div class="employee-form-actions attendance-actions">
+            <div class="attendance-sheet-footer">
+                <p><i class="bi bi-info-circle"></i> Daily marks automatically update monthly salary attendance totals.</p>
                 <button type="submit" class="btn-save-employee">
                     <i class="bi bi-save2"></i>
-                    <span>Save Attendance</span>
+                    <span>Save Daily Attendance</span>
                 </button>
             </div>
         </form>
     </section>
-
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<script src="/static/js/attendance.js"></script>
 {% endblock %}

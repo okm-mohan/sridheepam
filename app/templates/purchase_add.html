@@ -21,7 +21,50 @@
         </a>
     </section>
 
-    <form method="post" action="/purchase/save" class="purchase-entry-form">
+    <form method="post" action="/purchase/save" class="purchase-entry-form" id="purchaseEntryForm" enctype="multipart/form-data">
+        <input type="hidden" name="ocr_text" id="ocrText">
+        <input type="hidden" name="ocr_confidence" id="ocrConfidence" value="0">
+        <input type="hidden" name="entry_source" id="entrySource" value="Manual">
+
+        <section class="purchase-entry-panel invoice-ai-panel">
+            <div class="invoice-ai-heading">
+                <div class="invoice-ai-title">
+                    <span class="invoice-ai-icon"><i class="bi bi-stars"></i></span>
+                    <div><span class="purchase-panel-label">AI Invoice Capture</span><h2>Scan Purchase Invoice</h2><p>Upload an invoice image or take a photo to read and fill this purchase automatically.</p></div>
+                </div>
+                <span class="invoice-ai-badge"><i class="bi bi-cpu"></i> OCR Powered</span>
+            </div>
+
+            <div class="invoice-capture-actions">
+                <label class="invoice-capture-button upload">
+                    <i class="bi bi-cloud-arrow-up"></i><span><strong>Upload Invoice</strong><small>JPG, PNG or WebP</small></span>
+                    <input type="file" name="invoice_image_upload" id="invoiceImageUpload" accept="image/jpeg,image/png,image/webp" hidden>
+                </label>
+                <label class="invoice-capture-button camera">
+                    <i class="bi bi-camera"></i><span><strong>Use Camera</strong><small>Take a clear invoice photo</small></span>
+                    <input type="file" name="invoice_image_camera" id="invoiceImageCamera" accept="image/*" capture="environment" hidden>
+                </label>
+                <label class="invoice-auto-save"><input type="checkbox" id="ocrAutoSave" checked><span><strong>Save automatically</strong><small>Only after supplier and items are matched</small></span></label>
+            </div>
+
+            <div class="invoice-ocr-workspace" id="invoiceOcrWorkspace" hidden>
+                <div class="invoice-preview-shell"><img id="invoicePreview" alt="Purchase invoice preview"><span id="invoicePreviewPlaceholder"><i class="bi bi-file-earmark-image"></i></span></div>
+                <div class="invoice-ocr-progress">
+                    <div class="ocr-status-heading"><span id="ocrStatusIcon"><i class="bi bi-hourglass-split"></i></span><div><strong id="ocrStatusTitle">Preparing invoice</strong><p id="ocrStatusText">Loading the selected image...</p></div><b id="ocrProgressValue">0%</b></div>
+                    <div class="ocr-progress-track"><span id="ocrProgressBar"></span></div>
+                    <div class="ocr-result-checks" id="ocrResultChecks" hidden>
+                        <span data-check="supplier"><i class="bi bi-circle"></i> Supplier</span>
+                        <span data-check="invoice"><i class="bi bi-circle"></i> Invoice number</span>
+                        <span data-check="date"><i class="bi bi-circle"></i> Invoice date</span>
+                        <span data-check="items"><i class="bi bi-circle"></i> Materials</span>
+                    </div>
+                    <div class="ocr-review-actions" id="ocrReviewActions" hidden>
+                        <button type="button" class="ocr-review-button" id="ocrReviewButton"><i class="bi bi-pencil-square"></i> Review Filled Entry</button>
+                        <button type="button" class="ocr-save-button" id="ocrSaveButton"><i class="bi bi-check2-circle"></i> Save OCR Purchase</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <section class="purchase-entry-panel">
 
@@ -74,7 +117,7 @@
                         </option>
 
                         {% for s in suppliers %}
-                        <option value="{{ s.id }}">
+                        <option value="{{ s.id }}" data-name="{{ s.supplier_name }}">
                             {{ s.supplier_name }}
                         </option>
                         {% endfor %}
@@ -205,7 +248,7 @@
 
 let materialsOptions = `
 {% for m in materials %}
-<option value="{{ m.id }}">
+<option value="{{ m.id }}" data-name="{{ m.material_name }}" data-gst="{{ m.gst_percent or 0 }}" data-price="{{ m.purchase_price or 0 }}">
     {{ m.material_name }}
 </option>
 {% endfor %}
@@ -213,6 +256,7 @@ let materialsOptions = `
 
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="/static/js/purchase_add.js"></script>
 
 {% endblock %}

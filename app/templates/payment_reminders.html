@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block page_title %}Payment Reminders{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/payment_reminders.css">
+{% endblock %}
+
+{% block content %}
+<div class="reminder-page" data-company-name="{{ company_name }}">
+    <section class="reminder-hero">
+        <div>
+            <span class="reminder-kicker">Accounts Receivable Follow-up</span>
+            <h1>Payment Reminders</h1>
+            <p>Review customers with pending balances, prioritize overdue collections and prepare reminders through WhatsApp, SMS or email.</p>
+        </div>
+        <a href="/customer-outstanding-report" class="reminder-hero-link"><i class="bi bi-receipt"></i> Record Payment</a>
+    </section>
+
+    <section class="reminder-summary">
+        <article><span class="summary-icon balance"><i class="bi bi-wallet2"></i></span><div><small>Total Outstanding</small><strong>&#8377; {{ "{:,.2f}".format(total_pending) }}</strong></div></article>
+        <article><span class="summary-icon customers"><i class="bi bi-people"></i></span><div><small>Pending Customers</small><strong>{{ pending_count }}</strong></div></article>
+        <article><span class="summary-icon overdue"><i class="bi bi-clock-history"></i></span><div><small>Overdue Accounts</small><strong>{{ overdue_count }}</strong></div></article>
+        <article><span class="summary-icon critical"><i class="bi bi-exclamation-triangle"></i></span><div><small>Critical / Missing Contact</small><strong>{{ critical_count }} / {{ missing_contact_count }}</strong></div></article>
+    </section>
+
+    <section class="reminder-filter-panel">
+        <form method="get" action="/payment-reminders" class="reminder-filter-form">
+            <div class="reminder-field search-field">
+                <label>Search Customer</label>
+                <div><i class="bi bi-search"></i><input type="search" name="search" value="{{ search }}" placeholder="Name, company, mobile or email"></div>
+            </div>
+            <div class="reminder-field">
+                <label>Ageing Bucket</label>
+                <div><i class="bi bi-hourglass-split"></i><select name="aging">
+                    <option value="all" {% if aging == 'all' %}selected{% endif %}>All Pending</option>
+                    <option value="current" {% if aging == 'current' %}selected{% endif %}>Not Overdue</option>
+                    <option value="1-30" {% if aging == '1-30' %}selected{% endif %}>1-30 Days</option>
+                    <option value="31-60" {% if aging == '31-60' %}selected{% endif %}>31-60 Days</option>
+                    <option value="61-90" {% if aging == '61-90' %}selected{% endif %}>61-90 Days</option>
+                    <option value="90+" {% if aging == '90+' %}selected{% endif %}>90+ Days</option>
+                </select></div>
+            </div>
+            <button type="submit" class="reminder-search-button"><i class="bi bi-funnel"></i> Apply Filter</button>
+            <a href="/payment-reminders" class="reminder-reset-button">Reset</a>
+        </form>
+        <p class="credit-term-note"><i class="bi bi-info-circle"></i> Estimated due dates use a 30-day credit term because invoice-level due dates are not currently stored.</p>
+    </section>
+
+    <section class="reminder-panel">
+        <div class="reminder-panel-heading">
+            <div><span>Collection Queue</span><h2>Customers Requiring Payment Follow-up</h2></div>
+            <b>{{ customers|length }} Customers</b>
+        </div>
+
+        <div class="reminder-table-wrap">
+            <table class="reminder-table">
+                <thead><tr>
+                    <th>Customer</th><th>Contact</th><th>Estimated Due</th><th>Ageing</th><th>Outstanding</th><th>Last Follow-up</th><th>Next Follow-up</th><th>Reminder Options</th>
+                </tr></thead>
+                <tbody>
+                    {% for row in customers %}
+                    <tr>
+                        <td>
+                            <div class="reminder-customer"><span><i class="bi bi-building"></i></span><div><strong>{{ row.customer_name }}</strong><small>{{ row.company_name or row.sale_count ~ ' sales invoices' }}</small></div></div>
+                            <span class="priority-badge {{ row.priority }}">{{ row.priority_label }} Priority</span>
+                        </td>
+                        <td><div class="contact-lines"><span><i class="bi bi-phone"></i>{{ row.mobile or 'Mobile missing' }}</span><span><i class="bi bi-envelope"></i>{{ row.email or 'Email missing' }}</span></div></td>
+                        <td><strong>{{ row.estimated_due_date.strftime('%d %b %Y') if row.estimated_due_date else '-' }}</strong><small class="table-subtext">Oldest sale: {{ row.oldest_sale_date or '-' }}</small></td>
+                        <td><span class="aging-badge aging-{{ row.aging_bucket|replace('+','plus') }}">{{ row.aging_label }}</span>{% if row.days_overdue %}<small class="table-subtext">{{ row.days_overdue }} days overdue</small>{% endif %}</td>
+                        <td class="outstanding-money">&#8377; {{ "{:,.2f}".format(row.balance_amount) }}<small>Received &#8377; {{ "{:,.2f}".format(row.received_amount or 0) }}</small></td>
+                        <td>{% if row.last_reminder %}<strong>{{ row.last_reminder.channel }}</strong><small class="table-subtext">{{ row.last_reminder.reminder_date.strftime('%d %b %Y %I:%M %p') }}</small>{% else %}<span class="never-contacted">Not contacted</span>{% endif %}</td>
+                        <td>{% if row.last_reminder and row.last_reminder.next_followup_date %}<strong>{{ row.last_reminder.next_followup_date.strftime('%d %b %Y') }}</strong>{% else %}<span class="table-muted">Not scheduled</span>{% endif %}</td>
+                        <td>
+                            <div class="reminder-actions">
+                                <button type="button" class="channel-button whatsapp" data-reminder-open data-channel="WhatsApp" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-whatsapp"></i> WhatsApp</button>
+                                <button type="button" class="channel-button sms" data-reminder-open data-channel="SMS" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-chat-dots"></i> SMS</button>
+                                <button type="button" class="channel-button email" data-reminder-open data-channel="Email" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.email %}disabled title="Add customer email first"{% endif %}><i class="bi bi-envelope"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8"><div class="reminder-empty"><i class="bi bi-check-circle"></i><strong>No pending customers found</strong><span>All matching customer balances are settled.</span></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="reminder-lower-grid">
+        <div class="reminder-panel feature-panel">
+            <div class="reminder-panel-heading"><div><span>ERP Follow-up Controls</span><h2>Collection Features</h2></div></div>
+            <div class="collection-features">
+                <article><i class="bi bi-bar-chart-steps"></i><div><strong>Ageing & Priority</strong><p>Focus collection effort on the oldest and highest-risk balances.</p></div></article>
+                <article><i class="bi bi-calendar2-check"></i><div><strong>Next Follow-up</strong><p>Schedule the next contact date while preparing each reminder.</p></div></article>
+                <article><i class="bi bi-clock-history"></i><div><strong>Contact History</strong><p>Keep an audit trail of reminder channel, time, message and user.</p></div></article>
+                <article><i class="bi bi-file-earmark-text"></i><div><strong>Message Templates</strong><p>Start with a consistent professional message and edit it before contact.</p></div></article>
+            </div>
+        </div>
+
+        <div class="reminder-panel history-panel">
+            <div class="reminder-panel-heading"><div><span>Recent Activity</span><h2>Reminder History</h2></div><b>{{ history|length }} Entries</b></div>
+            <div class="reminder-history-list">
+                {% for item in history[:8] %}
+                <article><span class="history-channel {{ item.channel|lower }}"><i class="bi {{ 'bi-whatsapp' if item.channel|lower == 'whatsapp' else ('bi-chat-dots' if item.channel|lower == 'sms' else 'bi-envelope') }}"></i></span><div><strong>{{ item.customer_name or 'Customer' }}</strong><small>{{ item.channel }} prepared by {{ item.created_by or 'Administrator' }}</small></div><time>{{ item.reminder_date.strftime('%d %b, %I:%M %p') }}</time></article>
+                {% else %}<p class="history-empty">No reminder activity recorded yet.</p>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="reminder-modal" data-reminder-modal hidden>
+        <div class="reminder-modal-backdrop" data-reminder-close></div>
+        <section class="reminder-modal-card" role="dialog" aria-modal="true" aria-labelledby="reminderModalTitle">
+            <header><div><span>Prepare Message</span><h2 id="reminderModalTitle">Payment Reminder</h2></div><button type="button" data-reminder-close aria-label="Close"><i class="bi bi-x-lg"></i></button></header>
+            <div class="selected-customer"><span><i class="bi bi-person-check"></i></span><div><small>Customer</small><strong data-modal-customer></strong></div><div><small>Pending Balance</small><strong data-modal-balance></strong></div></div>
+            <input type="hidden" data-modal-customer-id>
+            <input type="hidden" data-modal-channel>
+            <input type="hidden" data-modal-mobile>
+            <input type="hidden" data-modal-email>
+            <label class="modal-field"><span>Reminder Message</span><textarea rows="7" data-modal-message></textarea></label>
+            <label class="modal-field"><span>Next Follow-up Date</span><input type="date" value="{{ default_followup }}" min="{{ today.strftime('%Y-%m-%d') }}" data-modal-followup></label>
+            <p class="composer-note"><i class="bi bi-info-circle"></i> The selected messaging app will open with this text. Review it and press Send in that app.</p>
+            <footer><button type="button" class="modal-cancel" data-reminder-close>Cancel</button><button type="button" class="modal-send" data-modal-send><i class="bi bi-send"></i> <span>Open Message</span></button></footer>
+        </section>
+    </div>
+
+    <div class="reminder-toast" data-reminder-toast hidden><i class="bi bi-check-circle-fill"></i><span>Reminder activity recorded.</span></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}<script src="/static/js/payment_reminders.js"></script>{% endblock %}
