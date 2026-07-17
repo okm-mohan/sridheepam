@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/settings.css">
+{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <section class="settings-hero">
+        <div>
+            <span class="settings-kicker">Company Controls</span>
+            <h1>Application Settings</h1>
+            <p>Control sales invoice numbering and choose which screens are available to company users.</p>
+        </div>
+        <div class="settings-hero-icon"><i class="bi bi-sliders2"></i></div>
+    </section>
+
+    {% if saved %}
+    <div class="settings-alert success"><i class="bi bi-check-circle-fill"></i> Settings saved successfully.</div>
+    {% endif %}
+    {% if error %}
+    <div class="settings-alert error"><i class="bi bi-exclamation-circle-fill"></i> {{ error }}</div>
+    {% endif %}
+
+    <form action="/settings/save" method="post" class="settings-form" id="settingsForm">
+        <section class="settings-panel">
+            <div class="settings-panel-header">
+                <div>
+                    <span>Sales</span>
+                    <h2>Invoice Number Format</h2>
+                </div>
+                <i class="bi bi-receipt"></i>
+            </div>
+
+            <div class="invoice-settings-grid">
+                <label class="settings-field format-field">
+                    <span>Format</span>
+                    <input type="text" name="sales_invoice_format" id="invoiceFormat"
+                           value="{{ settings.get('sales_invoice_format', 'SAL{NUMBER}') }}"
+                           maxlength="80" required>
+                    <small>Use <code>{NUMBER}</code>. Optional: <code>{YYYY}</code>, <code>{YY}</code>, <code>{MM}</code>.</small>
+                </label>
+
+                <label class="settings-field">
+                    <span>Number Digits</span>
+                    <input type="number" name="sales_invoice_digits" id="invoiceDigits"
+                           value="{{ settings.get('sales_invoice_digits', '6') }}" min="1" max="12" required>
+                </label>
+
+                <label class="settings-field">
+                    <span>Next Number</span>
+                    <input type="number" name="sales_invoice_next_number" id="invoiceNextNumber"
+                           value="{{ settings.get('sales_invoice_next_number', '1') }}" min="1" required>
+                </label>
+            </div>
+
+            <div class="invoice-preview">
+                <span>Next invoice preview</span>
+                <strong id="invoicePreview">{{ preview }}</strong>
+            </div>
+        </section>
+
+        <section class="settings-panel">
+            <div class="settings-panel-header">
+                <div>
+                    <span>Navigation & Access</span>
+                    <h2>Screen On / Off</h2>
+                    <p>Off screens are removed from the sidebar and cannot be opened directly.</p>
+                </div>
+                <div class="screen-actions">
+                    <button type="button" id="enableAll">Enable All</button>
+                    <button type="button" id="disableAll">Disable All</button>
+                </div>
+            </div>
+
+            <div class="screen-toggle-grid">
+                {% for key, label in screens.items() %}
+                <label class="screen-toggle-card">
+                    <span class="screen-toggle-copy">
+                        <strong>{{ label }}</strong>
+                        <small>Show screen</small>
+                    </span>
+                    <input class="screen-checkbox" type="checkbox" name="screen_{{ key }}"
+                           {% if settings.get('screen.' ~ key, '1') == '1' %}checked{% endif %}>
+                    <span class="toggle-switch" aria-hidden="true"></span>
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="settings-footer">
+            <span><i class="bi bi-shield-lock"></i> Only administrators can change these settings.</span>
+            <button type="submit" class="settings-save-btn"><i class="bi bi-check2-circle"></i> Save Settings</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/settings.js"></script>
+{% endblock %}

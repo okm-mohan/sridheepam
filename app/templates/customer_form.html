@@ -50,23 +50,12 @@ Add Customer
         <div class="customer-form-grid">
 
             <div class="customer-form-field wide-field">
-                <label>Customer Name</label>
-                <div class="customer-input-shell">
-                    <i class="bi bi-person-badge"></i>
-                    <input type="text"
-                           name="customer_name"
-                           class="form-control"
-                           required>
-                </div>
-            </div>
-
-            <div class="customer-form-field">
-                <label>Company Name</label>
+                <label>Customer Company Name</label>
                 <div class="customer-input-shell">
                     <i class="bi bi-buildings"></i>
                     <input type="text"
                            name="company_name"
-                           class="form-control">
+                           class="form-control" required>
                 </div>
             </div>
 
@@ -98,6 +87,11 @@ Add Customer
                            name="gst_number"
                            class="form-control">
                 </div>
+            </div>
+
+            <div class="customer-form-field">
+                <label>State / Place of Supply</label>
+                <div class="customer-input-shell"><i class="bi bi-geo-alt"></i><input type="text" name="state" class="form-control" required></div>
             </div>
 
             <div class="customer-form-field full-field">

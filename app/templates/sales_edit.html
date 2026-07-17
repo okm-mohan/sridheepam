@@ -23,7 +23,8 @@
 
     </section>
 
-    <form method="post" action="/sales/update" class="sales-entry-form">
+    <form method="post" action="/sales/update" class="sales-entry-form"
+          data-company-state="{{ company.state or '' }}" data-company-gst="{{ company.gst_number or '' }}">
 
         <input type="hidden" name="sale_id" value="{{ sale.id }}">
 
@@ -69,8 +70,8 @@
                         <i class="bi bi-person-badge"></i>
                         <select name="customer_id" required>
                             {% for c in customers %}
-                            <option value="{{ c.id }}" {% if c.id==sale.customer_id %} selected {% endif %}>
-                                {{ c.customer_name }}
+                            <option value="{{ c.id }}" data-state="{{ c.state or '' }}" data-gst="{{ c.gst_number or '' }}" {% if c.id==sale.customer_id %} selected {% endif %}>
+                                {{ c.company_name or c.customer_name }}
                             </option>
                             {% endfor %}
                         </select>
@@ -78,6 +79,8 @@
                 </div>
 
             </div>
+
+            <div class="gst-tax-mode" data-tax-mode><i class="bi bi-geo-alt"></i><span>Tax treatment follows the selected customer's place of supply.</span></div>
 
         </section>
 
@@ -105,7 +108,9 @@
                         <th>Qty</th>
                         <th>Rate</th>
                         <th>GST %</th>
-                        <th>GST Amt</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
                         <th>Total</th>
                         <th class="action-column"><span class="visually-hidden">Action</span></th>
                     </tr>
@@ -155,16 +160,16 @@
                         <td>
                             <input type="number"
                                    name="gst_percent"
-                                   value="{{ ((((item.total or 0) / ((item.quantity or 0) * (item.price or 0))) - 1) * 100)|round(2) if item.quantity and item.price else 0 }}"
+                                   value="{{ item.gst_percent or (((((item.total or 0) / ((item.quantity or 0) * (item.price or 0))) - 1) * 100)|round(2) if item.quantity and item.price else 0) }}"
                                    step="0.01"
                                    min="0"
                                    onkeyup="calculateRow(this)"
                                    onchange="calculateRow(this)">
                         </td>
 
-                        <td>
-                            <input type="number" name="gst_amount" value="{{ ((item.total or 0) - ((item.quantity or 0) * (item.price or 0)))|round(2) }}" readonly>
-                        </td>
+                        <td><input type="number" name="cgst_amount" value="{{ item.cgst_amount or 0 }}" readonly></td>
+                        <td><input type="number" name="sgst_amount" value="{{ item.sgst_amount or 0 }}" readonly></td>
+                        <td><input type="number" name="igst_amount" value="{{ item.igst_amount or 0 }}" readonly><input type="hidden" name="gst_amount" value="{{ item.gst_amount or ((item.total or 0) - ((item.quantity or 0) * (item.price or 0)))|round(2) }}"></td>
 
                         <td>
                             <input type="number" name="line_total" value="{{ item.total }}" readonly>
@@ -201,10 +206,10 @@
                     <strong id="subTotal">&#8377; 0.00</strong>
                 </div>
 
-                <div class="total-row">
-                    <span>GST Total</span>
-                    <strong id="gstTotal">&#8377; 0.00</strong>
-                </div>
+                <div class="total-row"><span>CGST Total</span><strong id="cgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>SGST Total</span><strong id="sgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>IGST Total</span><strong id="igstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>GST Total</span><strong id="gstTotal">&#8377; 0.00</strong></div>
 
                 <div class="total-row grand">
                     <span>Grand Total</span>

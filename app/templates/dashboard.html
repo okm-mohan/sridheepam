@@ -13,7 +13,7 @@
     <section class="dashboard-hero">
         <div>
             <span class="dashboard-kicker">Control Center</span>
-            <h1 id="dashboardGreeting">Welcome, Administrator</h1>
+            <h1 id="dashboardGreeting" data-user-name="{{ full_name }}">Welcome, {{ full_name }}</h1>
             <p>Review today's business movement, payment follow-ups, recent entries and the most used ERP actions.</p>
         </div>
 
@@ -156,7 +156,7 @@
                 {% for row in recent_purchases %}
                 <div class="dashboard-list-item">
                     <div>
-                        <strong>{{ row.purchase_no }}</strong>
+                        <strong>{{ row.invoice_no }}</strong>
                         <span>{{ row.supplier_name or "Supplier" }} | {{ row.purchase_date }}</span>
                     </div>
                     <b>&#8377; {{ "{:,.2f}".format(row.grand_total or 0) }}</b>

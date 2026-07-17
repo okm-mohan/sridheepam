@@ -90,7 +90,7 @@ Suppliers
 
                     <tr>
                         <th>ID</th>
-                        <th>Supplier</th>
+                        <th>Supplier Company</th>
                         <th>Company</th>
                         <th>Mobile</th>
                         <th>GST</th>
@@ -114,11 +114,11 @@ Suppliers
                         <td>
                             <div class="supplier-name-cell">
                                 <span class="supplier-avatar">
-                                    {{ item.supplier_name[:1]|upper }}
+                                    {{ (item.company_name or item.supplier_name)[:1]|upper }}
                                 </span>
 
                                 <div>
-                                    <strong>{{ item.supplier_name }}</strong>
+                                    <strong>{{ item.company_name or item.supplier_name }}</strong>
                                     <small>{{ item.email or "Supplier contact" }}</small>
                                 </div>
                             </div>
@@ -154,7 +154,7 @@ Suppliers
                                 <a href="/supplier/delete/{{ item.id }}"
                                    class="supplier-table-action supplier-delete-action"
                                    data-delete-supplier
-                                   data-supplier-name="{{ item.supplier_name }}">
+                                   data-supplier-name="{{ item.company_name or item.supplier_name }}">
                                     <i class="bi bi-trash3"></i>
                                     <span>Delete</span>
                                 </a>

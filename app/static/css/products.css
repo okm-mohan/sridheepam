@@ -647,3 +647,6 @@
         width:100%;
     }
 }
+.products-table{
+    min-width:1180px;
+}

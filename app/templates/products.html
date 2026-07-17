@@ -101,6 +101,7 @@ Products
                         <th>Category</th>
                         <th>Sale Price</th>
                         <th>Stock</th>
+                        <th>GST</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -152,6 +153,8 @@ Products
                             </span>
                         </td>
 
+                        <td class="product-numeric-cell">{{ "%.2f"|format(item.gst_percent or 0) }}%</td>
+
                         <td>
                             <div class="product-action-group">
 
@@ -177,7 +180,7 @@ Products
                     {% else %}
 
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="product-empty-state">
                                 <i class="bi bi-bag-x"></i>
                                 <strong>No products added yet</strong>

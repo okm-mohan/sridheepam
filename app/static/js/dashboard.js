@@ -51,7 +51,8 @@ function setGreeting() {
         greeting = "Good Afternoon";
     }
 
-    heading.textContent = `${greeting}, Administrator`;
+    const userName = (heading.dataset.userName || "User").trim();
+    heading.textContent = `${greeting}, ${userName}`;
 }
 
 function animateMoneyCounters() {

@@ -93,7 +93,7 @@ Purchase Bank Statement
                     <tr>
                         <th>SNO</th>
                         <th>Date</th>
-                        <th>Supplier Name</th>
+                        <th>Supplier Company</th>
                         <th>GST No</th>
                         <th>Material</th>
                         <th>Qty</th>
@@ -101,6 +101,9 @@ Purchase Bank Statement
                         <th>Total</th>
                         <th>GST</th>
                         <th>GST Price</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
                         <th>Grand Total</th>
                     </tr>
                 </thead>
@@ -109,7 +112,7 @@ Purchase Bank Statement
                     <tr>
                         <td>{{ loop.index }}</td>
                         <td>{{ row.purchase_date }}</td>
-                        <td>{{ row.supplier_name or "-" }}</td>
+                        <td>{{ row.company_name or row.supplier_name or "-" }}</td>
                         <td>{{ row.gst_number or "-" }}</td>
                         <td>{{ row.material_name or "-" }}</td>
                         <td class="statement-number">{{ "%.3f"|format(row.quantity or 0) }}</td>
@@ -117,11 +120,14 @@ Purchase Bank Statement
                         <td class="statement-number">{{ "%.2f"|format(row.taxable_total or 0) }}</td>
                         <td class="statement-number">{{ "%.2f"|format(row.gst_percent or 0) }}%</td>
                         <td class="statement-number">{{ "%.2f"|format(row.gst_amount or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
                         <td class="statement-number statement-grand">{{ "%.2f"|format(row.line_total or 0) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11">
+                        <td colspan="14">
                             <div class="statement-empty">
                                 <i class="bi bi-file-earmark-spreadsheet"></i>
                                 <strong>No purchase rows found for this month</strong>
@@ -138,6 +144,9 @@ Purchase Bank Statement
                         <td class="statement-number">{{ "%.2f"|format(summary.total_taxable or 0) }}</td>
                         <td></td>
                         <td class="statement-number">{{ "%.2f"|format(summary.total_gst or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(summary.total_cgst or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(summary.total_sgst or 0) }}</td>
+                        <td class="statement-number">{{ "%.2f"|format(summary.total_igst or 0) }}</td>
                         <td class="statement-number statement-grand">{{ "%.2f"|format(summary.grand_total or 0) }}</td>
                     </tr>
                 </tfoot>

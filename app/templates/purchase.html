@@ -138,10 +138,9 @@ Purchase
 
                 <thead>
                     <tr>
-                        <th>Purchase No</th>
-                        <th>Date</th>
-                        <th>Supplier</th>
                         <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Supplier Company</th>
                         <th>Total Amount</th>
                         <th>Actions</th>
                     </tr>
@@ -155,7 +154,7 @@ Purchase
 
                         <td>
                             <span class="purchase-no-pill">
-                                {{ row.purchase_no }}
+                                {{ row.invoice_no }}
                             </span>
                         </td>
 
@@ -168,12 +167,6 @@ Purchase
                                 </span>
                                 <strong>{{ row.supplier_name or "Unknown Supplier" }}</strong>
                             </div>
-                        </td>
-
-                        <td>
-                            <span class="invoice-badge">
-                                {{ row.invoice_no or "-" }}
-                            </span>
                         </td>
 
                         <td class="purchase-amount-cell">
@@ -191,7 +184,7 @@ Purchase
                                 <a href="/purchase/delete/{{ row.purchase_id }}"
                                    class="purchase-table-action purchase-delete-action"
                                    data-delete-purchase
-                                   data-purchase-no="{{ row.purchase_no }}">
+                                   data-purchase-no="{{ row.invoice_no }}">
                                     <i class="bi bi-trash3"></i>
                                     <span>Delete</span>
                                 </a>
@@ -203,7 +196,7 @@ Purchase
                     {% else %}
 
                     <tr>
-                        <td colspan="6">
+                        <td colspan="5">
                             <div class="purchase-empty-state">
                                 <i class="bi bi-cart-x"></i>
                                 <strong>No purchases found</strong>

@@ -17,6 +17,7 @@ import calendar
 import os
 import uuid
 import json
+import re
 try:
     from openai import AsyncOpenAI
 except ImportError:
@@ -34,8 +35,15 @@ from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy import text
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from passlib.context import CryptContext
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from starlette.middleware.sessions import SessionMiddleware
@@ -64,6 +72,18 @@ class TenantDatabaseMiddleware(BaseHTTPMiddleware):
             token = set_tenant_database_url(tenant_database_url)
 
         try:
+            request.state.screen_settings = {key: True for key in SCREEN_DEFINITIONS}
+            if tenant_database_url and request.session.get("user") and not path.startswith("/static/"):
+                settings_db = SessionLocal()
+                try:
+                    company_settings = load_company_settings(settings_db)
+                    request.state.screen_settings = screen_visibility(company_settings)
+                finally:
+                    settings_db.close()
+
+                screen_key = screen_key_for_path(path)
+                if screen_key and not request.state.screen_settings.get(screen_key, True):
+                    return RedirectResponse("/dashboard?screen_disabled=1", status_code=303)
             return await call_next(request)
         finally:
             if token:
@@ -91,6 +111,345 @@ def hash_password(password):
     return pwd_context.hash(password)
 
 templates = Jinja2Templates(env=env)
+
+
+SCREEN_DEFINITIONS = {
+    "purchase": "Purchase",
+    "sales": "Sales",
+    "accounts": "Accounts",
+    "hr": "HR Department",
+    "raw_materials": "Raw Materials",
+    "products": "Products",
+    "suppliers": "Suppliers",
+    "customers": "Customers",
+    "purchase_reports": "Purchase Reports",
+    "sales_reports": "Sales Reports",
+    "monthly_purchase_report": "Monthly Purchase Report",
+    "monthly_sales_report": "Monthly Sales Report",
+    "stock_valuation_report": "Stock Valuation",
+    "supplier_outstanding_report": "Supplier Outstanding",
+    "customer_outstanding_report": "Customer Outstanding",
+    "purchase_bank_statement": "Purchase Bank Statement",
+    "sales_bank_statement": "Sales Bank Statement",
+    "accounts_ledger": "Accounts Ledger",
+    "expense_reports": "Expense Report",
+    "purchase_gst_report": "Purchase GST Report",
+    "sales_gst_report": "Sales GST Report",
+    "ai_expense_analyzer": "AI Expense Analyzer",
+    "ai_chatbot": "AI Chatbot",
+}
+
+SCREEN_PATHS = {
+    "purchase_gst_report": ("/purchase-gst-report",),
+    "sales_gst_report": ("/sales-gst-report",),
+    "purchase_reports": ("/purchase-reports",),
+    "sales_reports": ("/sales-reports",),
+    "monthly_purchase_report": ("/monthly-purchase-report",),
+    "monthly_sales_report": ("/monthly-sales-report",),
+    "stock_valuation_report": ("/stock-valuation-report",),
+    "supplier_outstanding_report": ("/supplier-outstanding-report", "/supplier-payment"),
+    "customer_outstanding_report": ("/customer-outstanding-report", "/customer-payment", "/payment-reminders"),
+    "purchase_bank_statement": ("/purchase-bank-statement",),
+    "sales_bank_statement": ("/sales-bank-statement",),
+    "accounts_ledger": ("/accounts-ledger",),
+    "expense_reports": ("/expense-reports",),
+    "ai_expense_analyzer": ("/ai-expense-analyzer",),
+    "ai_chatbot": ("/ai-chatbot", "/ai-assistant"),
+    "raw_materials": ("/raw-materials", "/raw-material"),
+    "products": ("/products", "/product"),
+    "suppliers": ("/suppliers", "/supplier"),
+    "customers": ("/customers", "/customer"),
+    "purchase": ("/purchase",),
+    "sales": ("/sales",),
+    "accounts": ("/accounts", "/expenses", "/expense", "/income-expenses", "/account-head", "/account-transaction"),
+    "hr": ("/hr", "/employee", "/employees", "/employee-advances", "/employee-attendance", "/salary-receipt"),
+}
+
+_SETTINGS_READY_DATABASES = set()
+
+
+def ensure_company_settings_table(db):
+    database_key = str(db.get_bind().url)
+    if database_key in _SETTINGS_READY_DATABASES:
+        return
+
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key VARCHAR(100) PRIMARY KEY,
+            setting_value TEXT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    """))
+
+    last_invoice = db.execute(text("""
+        SELECT invoice_number
+        FROM sales
+        ORDER BY id DESC
+        LIMIT 1
+    """)).scalar()
+    number_match = re.search(r"(\d+)(?!.*\d)", str(last_invoice or ""))
+    initial_next_number = int(number_match.group(1)) + 1 if number_match else 1
+
+    defaults = {
+        "sales_invoice_format": "SAL{NUMBER}",
+        "sales_invoice_digits": "6",
+        "sales_invoice_next_number": str(initial_next_number),
+        **{f"screen.{key}": "1" for key in SCREEN_DEFINITIONS},
+    }
+    for setting_key, setting_value in defaults.items():
+        db.execute(
+            text("""
+                INSERT IGNORE INTO app_settings (setting_key, setting_value)
+                VALUES (:setting_key, :setting_value)
+            """),
+            {"setting_key": setting_key, "setting_value": setting_value},
+        )
+    db.commit()
+    _SETTINGS_READY_DATABASES.add(database_key)
+
+
+def load_company_settings(db):
+    ensure_company_settings_table(db)
+    rows = db.execute(text("SELECT setting_key, setting_value FROM app_settings")).mappings().all()
+    return {row["setting_key"]: row["setting_value"] for row in rows}
+
+
+def screen_visibility(settings):
+    return {
+        key: str(settings.get(f"screen.{key}", "1")).lower() in {"1", "true", "on", "yes"}
+        for key in SCREEN_DEFINITIONS
+    }
+
+
+def screen_key_for_path(path):
+    for key, prefixes in SCREEN_PATHS.items():
+        if any(path == prefix or path.startswith(f"{prefix}/") for prefix in prefixes):
+            return key
+    return None
+
+
+def format_sales_invoice_number(format_pattern, digits, sequence, invoice_date=None):
+    invoice_date = invoice_date or date.today()
+    number = str(max(int(sequence), 1)).zfill(max(1, min(int(digits), 12)))
+    replacements = {
+        "{NUMBER}": number,
+        "{YYYY}": invoice_date.strftime("%Y"),
+        "{YY}": invoice_date.strftime("%y"),
+        "{MM}": invoice_date.strftime("%m"),
+    }
+    result = str(format_pattern or "SAL{NUMBER}")
+    for placeholder, value in replacements.items():
+        result = result.replace(placeholder, value)
+    return result
+
+
+def next_sales_invoice_number(db, invoice_date=None, reserve=False):
+    invoice_date = invoice_date or date.today()
+    financial_year_start, financial_year_end, financial_year_label = purchase_financial_year(invoice_date)
+    existing_numbers = db.execute(
+        text("""
+            SELECT invoice_number
+            FROM sales
+            WHERE sale_date BETWEEN :financial_year_start AND :financial_year_end
+        """),
+        {
+            "financial_year_start": financial_year_start,
+            "financial_year_end": financial_year_end,
+        },
+    ).scalars().all()
+
+    serials = []
+    pattern = re.compile(rf"^(\d+)/{re.escape(financial_year_label)}$")
+    for existing_number in existing_numbers:
+        match = pattern.match(str(existing_number or "").strip())
+        if match:
+            serials.append(int(match.group(1)))
+
+    return f"{max(serials, default=0) + 1}/{financial_year_label}"
+
+
+def ensure_gst_component_columns(db):
+    """Add GST component columns to older tenant databases without a manual migration."""
+    required_columns = {
+        "raw_materials": {
+            "cgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "sgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "igst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+        },
+        "products": {
+            "cgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "sgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "igst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+        },
+        "customers": {
+            "state": "VARCHAR(100) NULL",
+        },
+        "purchase": {
+            "gst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "cgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "sgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "igst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "tax_type": "VARCHAR(20) NULL",
+            "place_of_supply": "VARCHAR(100) NULL",
+        },
+        "purchase_items": {
+            "cgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "sgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "igst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "cgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "sgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "igst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+        },
+        "sales": {
+            "cgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "sgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "igst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "tax_type": "VARCHAR(20) NULL",
+            "place_of_supply": "VARCHAR(100) NULL",
+        },
+        "sale_items": {
+            "gst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "gst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "cgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "sgst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "igst_percent": "DECIMAL(7,2) NOT NULL DEFAULT 0",
+            "cgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "sgst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+            "igst_amount": "DECIMAL(15,2) NOT NULL DEFAULT 0",
+        },
+    }
+
+    existing_tables = {
+        row["table_name"]
+        for row in db.execute(text("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+        """)).mappings().all()
+    }
+
+    changed_tables = set()
+    for table_name, columns in required_columns.items():
+        if table_name not in existing_tables:
+            continue
+        existing = {
+            row["Field"]
+            for row in db.execute(text(f"SHOW COLUMNS FROM {table_name}")).mappings().all()
+        }
+        for column_name, column_type in columns.items():
+            if column_name not in existing:
+                db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                changed_tables.add(table_name)
+
+    for table_name in ("raw_materials", "products"):
+        if table_name in changed_tables:
+            db.execute(text(f"""
+                UPDATE {table_name}
+                SET cgst_percent = ROUND(IFNULL(gst_percent, 0) / 2, 2),
+                    sgst_percent = ROUND(IFNULL(gst_percent, 0) / 2, 2),
+                    igst_percent = IFNULL(gst_percent, 0)
+            """))
+    db.commit()
+
+
+def gst_rate_components(gst_percent):
+    gst_rate = round(max(float(gst_percent or 0), 0), 2)
+    cgst_rate = round(gst_rate / 2, 2)
+    return gst_rate, cgst_rate, round(gst_rate - cgst_rate, 2), gst_rate
+
+
+def purchase_financial_year(purchase_date):
+    if isinstance(purchase_date, str):
+        purchase_date = date.fromisoformat(purchase_date)
+    start_year = purchase_date.year if purchase_date.month >= 4 else purchase_date.year - 1
+    return (
+        date(start_year, 4, 1),
+        date(start_year + 1, 3, 31),
+        f"{start_year % 100:02d}-{(start_year + 1) % 100:02d}",
+    )
+
+
+def next_purchase_number(db, purchase_date):
+    financial_year_start, financial_year_end, financial_year_label = purchase_financial_year(purchase_date)
+    existing_numbers = db.execute(
+        text("""
+            SELECT COALESCE(NULLIF(invoice_no, ''), purchase_no) AS invoice_number
+            FROM purchase
+            WHERE purchase_date BETWEEN :financial_year_start AND :financial_year_end
+        """),
+        {
+            "financial_year_start": financial_year_start,
+            "financial_year_end": financial_year_end,
+        },
+    ).scalars().all()
+
+    serials = []
+    pattern = re.compile(rf"^(\d+)/{re.escape(financial_year_label)}$")
+    for existing_number in existing_numbers:
+        match = pattern.match(str(existing_number or "").strip())
+        if match:
+            serials.append(int(match.group(1)))
+
+    return f"{max(serials, default=0) + 1}/{financial_year_label}"
+
+
+def transaction_tax_context(db, party_table, party_id):
+    company = db.execute(text("SELECT state, gst_number FROM company LIMIT 1")).mappings().first() or {}
+    party = db.execute(
+        text(f"SELECT state, gst_number FROM {party_table} WHERE id=:party_id"),
+        {"party_id": party_id},
+    ).mappings().first() or {}
+    intra_state = is_intra_state_gst(company, party.get("gst_number"), party.get("state"))
+    return {
+        "intra_state": intra_state,
+        "tax_type": "Intra-State" if intra_state else "Inter-State",
+        "place_of_supply": str(party.get("state") or "").strip(),
+    }
+
+
+def normalize_state_name(value):
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
+
+
+def calculate_gst_lines(item_ids, quantities, rates, gst_rates, intra_state):
+    lines = []
+    for index, item_id in enumerate(item_ids):
+        if not item_id:
+            continue
+        quantity = float(quantities[index] or 0)
+        rate = float(rates[index] or 0)
+        gst_rate, cgst_rate, sgst_rate, igst_rate = gst_rate_components(gst_rates[index])
+        basic = round(quantity * rate, 2)
+        gst_amount = round(basic * gst_rate / 100, 2)
+        if intra_state:
+            cgst_amount = round(gst_amount / 2, 2)
+            sgst_amount = round(gst_amount - cgst_amount, 2)
+            igst_amount = 0.0
+            active_igst_rate = 0.0
+        else:
+            cgst_amount = 0.0
+            sgst_amount = 0.0
+            igst_amount = gst_amount
+            cgst_rate = 0.0
+            sgst_rate = 0.0
+            active_igst_rate = igst_rate
+
+        lines.append({
+            "item_id": int(item_id),
+            "quantity": quantity,
+            "rate": rate,
+            "basic": basic,
+            "gst_percent": gst_rate,
+            "gst_amount": gst_amount,
+            "cgst_percent": cgst_rate,
+            "sgst_percent": sgst_rate,
+            "igst_percent": active_igst_rate,
+            "cgst_amount": cgst_amount,
+            "sgst_amount": sgst_amount,
+            "igst_amount": igst_amount,
+            "line_total": round(basic + gst_amount, 2),
+        })
+    return lines
 
 
 def get_master_content():
@@ -232,13 +591,115 @@ def clean_database_error(error):
 
 
 def is_admin_user(request: Request):
-    return request.session.get("role", "Admin") == "Admin"
+    role = re.sub(r"[\s_-]+", "", str(request.session.get("role", "Admin"))).lower()
+    return bool(request.session.get("user")) and role in {"admin", "superadmin"}
+
+
+def is_superadmin_user(request: Request):
+    role = re.sub(r"[\s_-]+", "", str(request.session.get("role", ""))).lower()
+    return bool(request.session.get("user")) and role == "superadmin"
+
+
+def is_superadmin_role(role):
+    return re.sub(r"[\s_-]+", "", str(role or "")).lower() == "superadmin"
 
 
 def admin_only_redirect(request: Request):
     if not is_admin_user(request):
-        return RedirectResponse("/dashboard", status_code=303)
+        target = "/dashboard" if request.session.get("user") else "/login"
+        return RedirectResponse(target, status_code=303)
     return None
+
+
+@app.get("/settings")
+def settings_page(request: Request):
+    blocked = admin_only_redirect(request)
+    if blocked:
+        return blocked
+
+    db = SessionLocal()
+    settings = load_company_settings(db)
+    db.close()
+    preview = format_sales_invoice_number(
+        settings.get("sales_invoice_format", "SAL{NUMBER}"),
+        settings.get("sales_invoice_digits", "6"),
+        settings.get("sales_invoice_next_number", "1"),
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={
+            "settings": settings,
+            "screens": SCREEN_DEFINITIONS,
+            "preview": preview,
+            "saved": request.query_params.get("saved") == "1",
+            "error": "",
+        },
+    )
+
+
+@app.post("/settings/save")
+async def settings_save(request: Request):
+    blocked = admin_only_redirect(request)
+    if blocked:
+        return blocked
+
+    form = await request.form()
+    invoice_format = str(form.get("sales_invoice_format") or "").strip()
+    try:
+        digits = max(1, min(int(form.get("sales_invoice_digits") or 6), 12))
+        next_number = max(1, int(form.get("sales_invoice_next_number") or 1))
+    except (TypeError, ValueError):
+        digits = 6
+        next_number = 1
+
+    if "{NUMBER}" not in invoice_format or len(invoice_format) > 80:
+        posted_settings = {
+            "sales_invoice_format": invoice_format,
+            "sales_invoice_digits": str(digits),
+            "sales_invoice_next_number": str(next_number),
+            **{
+                f"screen.{key}": "1" if form.get(f"screen_{key}") else "0"
+                for key in SCREEN_DEFINITIONS
+            },
+        }
+        return templates.TemplateResponse(
+            request=request,
+            name="settings.html",
+            status_code=400,
+            context={
+                "settings": posted_settings,
+                "screens": SCREEN_DEFINITIONS,
+                "preview": "",
+                "saved": False,
+                "error": "Invoice format must contain {NUMBER} and be 80 characters or fewer.",
+            },
+        )
+
+    updates = {
+        "sales_invoice_format": invoice_format,
+        "sales_invoice_digits": str(digits),
+        "sales_invoice_next_number": str(next_number),
+        **{
+            f"screen.{key}": "1" if form.get(f"screen_{key}") else "0"
+            for key in SCREEN_DEFINITIONS
+        },
+    }
+    db = SessionLocal()
+    ensure_company_settings_table(db)
+    for setting_key, setting_value in updates.items():
+        db.execute(
+            text("""
+                INSERT INTO app_settings (setting_key, setting_value)
+                VALUES (:setting_key, :setting_value)
+                ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)
+            """),
+            {"setting_key": setting_key, "setting_value": setting_value},
+        )
+    db.commit()
+    db.close()
+    request.state.screen_settings = screen_visibility(updates)
+    return RedirectResponse("/settings?saved=1", status_code=303)
 
 
 @app.get("/")
@@ -396,7 +857,7 @@ async def dashboard(request: Request):
         SELECT
             s.invoice_number,
             s.sale_date,
-            c.customer_name,
+            COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
             s.grand_total
         FROM sales s
         LEFT JOIN customers c
@@ -407,9 +868,9 @@ async def dashboard(request: Request):
 
     recent_purchases = db.execute(text("""
         SELECT
-            p.purchase_no,
+            COALESCE(NULLIF(p.invoice_no, ''), p.purchase_no) AS invoice_no,
             p.purchase_date,
-            s.supplier_name,
+            COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
             p.grand_total
         FROM purchase p
         LEFT JOIN suppliers s
@@ -567,6 +1028,7 @@ def save_company(
 def raw_materials(request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     materials = db.execute(text("""
             SELECT *
@@ -583,7 +1045,9 @@ def raw_materials(request: Request):
 
 @app.get("/raw-material/add")
 def add_material(request: Request):
-
+    db = SessionLocal()
+    ensure_gst_component_columns(db)
+    db.close()
     return templates.TemplateResponse(request=request, name="raw_material_form.html")
 
 
@@ -598,6 +1062,8 @@ def save_material(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
+    gst_percent, cgst_percent, sgst_percent, igst_percent = gst_rate_components(gst_percent)
 
     db.execute(
         text("""
@@ -608,7 +1074,10 @@ def save_material(
                 purchase_price,
                 stock_qty,
                 minimum_stock,
-                gst_percent
+                gst_percent,
+                cgst_percent,
+                sgst_percent,
+                igst_percent
             )
             VALUES
             (
@@ -617,7 +1086,10 @@ def save_material(
                 :purchase_price,
                 :stock_qty,
                 :minimum_stock,
-                :gst_percent
+                :gst_percent,
+                :cgst_percent,
+                :sgst_percent,
+                :igst_percent
             )
         """),
         {
@@ -627,6 +1099,9 @@ def save_material(
             "stock_qty": stock_qty,
             "minimum_stock": minimum_stock,
             "gst_percent": gst_percent,
+            "cgst_percent": cgst_percent,
+            "sgst_percent": sgst_percent,
+            "igst_percent": igst_percent,
         },
     )
 
@@ -659,6 +1134,7 @@ def delete_material(material_id: int):
 def products(request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     products = db.execute(text("""
             SELECT *
@@ -675,7 +1151,9 @@ def products(request: Request):
 
 @app.get("/product/add")
 def product_add(request: Request):
-
+    db = SessionLocal()
+    ensure_gst_component_columns(db)
+    db.close()
     return templates.TemplateResponse(request=request, name="product_form.html")
 
 
@@ -695,6 +1173,8 @@ def save_product(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
+    gst_percent, cgst_percent, sgst_percent, igst_percent = gst_rate_components(gst_percent)
 
     db.execute(
         text("""
@@ -708,6 +1188,9 @@ def save_product(
                 color,
                 hsn_code,
                 gst_percent,
+                cgst_percent,
+                sgst_percent,
+                igst_percent,
                 purchase_price,
                 sale_price,
                 category
@@ -722,6 +1205,9 @@ def save_product(
                 :color,
                 :hsn_code,
                 :gst_percent,
+                :cgst_percent,
+                :sgst_percent,
+                :igst_percent,
                 :purchase_price,
                 :sale_price,
                 :category
@@ -736,6 +1222,9 @@ def save_product(
             "color": color,
             "hsn_code": hsn_code,
             "gst_percent": gst_percent,
+            "cgst_percent": cgst_percent,
+            "sgst_percent": sgst_percent,
+            "igst_percent": igst_percent,
             "purchase_price": purchase_price,
             "sale_price": sale_price,
             "category": category,
@@ -775,7 +1264,7 @@ def suppliers(request: Request):
     suppliers = db.execute(text("""
             SELECT *
             FROM suppliers
-            ORDER BY supplier_name
+            ORDER BY company_name
         """)).fetchall()
 
     db.close()
@@ -871,11 +1360,12 @@ def delete_supplier(supplier_id: int):
 def customers(request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     customers = db.execute(text("""
             SELECT *
             FROM customers
-            ORDER BY customer_name
+            ORDER BY company_name
         """)).fetchall()
 
     db.close()
@@ -887,7 +1377,9 @@ def customers(request: Request):
 
 @app.get("/customer/add")
 def customer_add(request: Request):
-
+    db = SessionLocal()
+    ensure_gst_component_columns(db)
+    db.close()
     return templates.TemplateResponse(request=request, name="customer_form.html")
 
 
@@ -899,9 +1391,12 @@ def customer_save(
     email: str = Form(""),
     address: str = Form(""),
     gst_number: str = Form(""),
+    state: str = Form(""),
 ):
 
+    supplier_name = company_name
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     db.execute(
         text("""
@@ -912,7 +1407,8 @@ def customer_save(
                 mobile,
                 email,
                 address,
-                gst_number
+                gst_number,
+                state
             )
             VALUES
             (
@@ -921,7 +1417,8 @@ def customer_save(
                 :mobile,
                 :email,
                 :address,
-                :gst_number
+                :gst_number,
+                :state
             )
         """),
         {
@@ -931,6 +1428,7 @@ def customer_save(
             "email": email,
             "address": address,
             "gst_number": gst_number,
+            "state": state,
         },
     )
 
@@ -963,6 +1461,7 @@ def delete_customer(customer_id: int):
 def edit_material(material_id: int, request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     material = db.execute(
         text("""
@@ -991,7 +1490,10 @@ def update_material(
     gst_percent: float = Form(0),
 ):
 
+    customer_name = company_name
     db = SessionLocal()
+    ensure_gst_component_columns(db)
+    gst_percent, cgst_percent, sgst_percent, igst_percent = gst_rate_components(gst_percent)
 
     db.execute(
         text("""
@@ -1002,7 +1504,10 @@ def update_material(
                 purchase_price=:purchase_price,
                 stock_qty=:stock_qty,
                 minimum_stock=:minimum_stock,
-                gst_percent=:gst_percent
+                gst_percent=:gst_percent,
+                cgst_percent=:cgst_percent,
+                sgst_percent=:sgst_percent,
+                igst_percent=:igst_percent
             WHERE id=:id
         """),
         {
@@ -1013,6 +1518,9 @@ def update_material(
             "stock_qty": stock_qty,
             "minimum_stock": minimum_stock,
             "gst_percent": gst_percent,
+            "cgst_percent": cgst_percent,
+            "sgst_percent": sgst_percent,
+            "igst_percent": igst_percent,
         },
     )
 
@@ -1026,6 +1534,7 @@ def update_material(
 def edit_product(product_id: int, request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     product = db.execute(
         text("""
@@ -1060,6 +1569,8 @@ def update_product(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
+    gst_percent, cgst_percent, sgst_percent, igst_percent = gst_rate_components(gst_percent)
 
     db.execute(
         text("""
@@ -1073,6 +1584,9 @@ def update_product(
                 color=:color,
                 hsn_code=:hsn_code,
                 gst_percent=:gst_percent,
+                cgst_percent=:cgst_percent,
+                sgst_percent=:sgst_percent,
+                igst_percent=:igst_percent,
                 purchase_price=:purchase_price,
                 sale_price=:sale_price,
                 category=:category
@@ -1088,6 +1602,9 @@ def update_product(
             "color": color,
             "hsn_code": hsn_code,
             "gst_percent": gst_percent,
+            "cgst_percent": cgst_percent,
+            "sgst_percent": sgst_percent,
+            "igst_percent": igst_percent,
             "purchase_price": purchase_price,
             "sale_price": sale_price,
             "category": category,
@@ -1173,6 +1690,7 @@ def update_supplier(
 def edit_customer(customer_id: int, request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     customer = db.execute(
         text("""
@@ -1199,9 +1717,12 @@ def update_customer(
     email: str = Form(""),
     address: str = Form(""),
     gst_number: str = Form(""),
+    state: str = Form(""),
 ):
 
+    supplier_name = company_name
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     db.execute(
         text("""
@@ -1212,7 +1733,8 @@ def update_customer(
                 mobile=:mobile,
                 email=:email,
                 address=:address,
-                gst_number=:gst_number
+                gst_number=:gst_number,
+                state=:state
             WHERE id=:id
         """),
         {
@@ -1223,6 +1745,7 @@ def update_customer(
             "email": email,
             "address": address,
             "gst_number": gst_number,
+            "state": state,
         },
     )
 
@@ -1254,10 +1777,9 @@ async def purchase_page(
             text("""
     SELECT
         p.purchase_id,
-        p.purchase_no,
         p.purchase_date,
-        s.supplier_name,
-        p.invoice_no,
+        COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
+        COALESCE(NULLIF(p.invoice_no, ''), p.purchase_no) AS invoice_no,
         p.grand_total
     FROM purchase p
     LEFT JOIN suppliers s
@@ -1324,14 +1846,20 @@ async def purchase_page(
 def purchase_add(request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     suppliers = db.execute(text("""
             SELECT
                 id,
-                supplier_name
+                supplier_name,
+                COALESCE(NULLIF(company_name, ''), supplier_name) AS company_name,
+                gst_number,
+                state
             FROM suppliers
-            ORDER BY supplier_name
+            ORDER BY company_name
         """)).fetchall()
+
+    company = db.execute(text("SELECT state, gst_number FROM company LIMIT 1")).mappings().first() or {}
 
     materials = db.execute(text("""
             SELECT
@@ -1343,24 +1871,7 @@ def purchase_add(request: Request):
             ORDER BY material_name
         """)).fetchall()
 
-    # Generate Purchase Number
-
-    last_purchase = db.execute(text("""
-            SELECT purchase_no
-            FROM purchase
-            ORDER BY purchase_id DESC
-            LIMIT 1
-        """)).fetchone()
-
-    if last_purchase:
-
-        last_no = int(last_purchase.purchase_no.replace("PUR", ""))
-
-        purchase_no = f"PUR{last_no + 1:06d}"
-
-    else:
-
-        purchase_no = "PUR000001"
+    invoice_no = next_purchase_number(db, date.today())
 
     db.close()
 
@@ -1370,8 +1881,9 @@ def purchase_add(request: Request):
         context={
             "suppliers": suppliers,
             "materials": materials,
-            "purchase_no": purchase_no,
+            "invoice_no": invoice_no,
             "today": date.today().strftime("%Y-%m-%d"),
+            "company": company,
         },
     )
 
@@ -1396,11 +1908,9 @@ async def purchase_save(request: Request):
 
     form = await request.form()
 
-    purchase_no = form.get("purchase_no")
-    purchase_date = form.get("purchase_date")
+    purchase_date = form.get("invoice_date")
     supplier_id = int(form.get("supplier_id"))
-    invoice_no = form.get("invoice_no", "")
-    invoice_date = form.get("invoice_date", "")
+    invoice_date = purchase_date
     ocr_text = (form.get("ocr_text") or "").strip()
     ocr_confidence = float(form.get("ocr_confidence") or 0)
     entry_source = (form.get("entry_source") or "Manual").strip()[:30]
@@ -1412,9 +1922,19 @@ async def purchase_save(request: Request):
     gst_amount = form.getlist("gst_amount")
     line_total = form.getlist("line_total")
 
+    try:
+        parsed_quantities = [float(value) for value in qty]
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Material quantity must be a whole number")
+    if any(value < 1 or not value.is_integer() for value in parsed_quantities):
+        raise HTTPException(status_code=400, detail="Material quantity must be a whole number of 1 or more")
+
     db = SessionLocal()
 
     ensure_purchase_ocr_columns(db)
+    ensure_gst_component_columns(db)
+    invoice_no = next_purchase_number(db, purchase_date)
+    purchase_no = invoice_no
 
     invoice_image = None
     for field_name in ("invoice_image_camera", "invoice_image_upload"):
@@ -1444,7 +1964,13 @@ async def purchase_save(request: Request):
             invoice_file.write(image_bytes)
         invoice_image_path = f"/static/uploads/purchase_invoices/{stored_filename}"
 
-    grand_total = sum(float(x or 0) for x in line_total)
+    tax_context = transaction_tax_context(db, "suppliers", supplier_id)
+    calculated_lines = calculate_gst_lines(material_id, qty, rate, gst_percent, tax_context["intra_state"])
+    gst_total = sum(item["gst_amount"] for item in calculated_lines)
+    cgst_total = sum(item["cgst_amount"] for item in calculated_lines)
+    sgst_total = sum(item["sgst_amount"] for item in calculated_lines)
+    igst_total = sum(item["igst_amount"] for item in calculated_lines)
+    grand_total = sum(item["line_total"] for item in calculated_lines)
 
     result = db.execute(
         text("""
@@ -1455,6 +1981,12 @@ async def purchase_save(request: Request):
                 supplier_id,
                 invoice_no,
                 invoice_date,
+                gst_amount,
+                cgst_amount,
+                sgst_amount,
+                igst_amount,
+                tax_type,
+                place_of_supply,
                 grand_total,
                 invoice_image_path,
                 ocr_text,
@@ -1468,6 +2000,12 @@ async def purchase_save(request: Request):
                 :supplier_id,
                 :invoice_no,
                 :invoice_date,
+                :gst_amount,
+                :cgst_amount,
+                :sgst_amount,
+                :igst_amount,
+                :tax_type,
+                :place_of_supply,
                 :grand_total,
                 :invoice_image_path,
                 :ocr_text,
@@ -1481,6 +2019,12 @@ async def purchase_save(request: Request):
             "supplier_id": supplier_id,
             "invoice_no": invoice_no,
             "invoice_date": invoice_date if invoice_date else None,
+            "gst_amount": gst_total,
+            "cgst_amount": cgst_total,
+            "sgst_amount": sgst_total,
+            "igst_amount": igst_total,
+            "tax_type": tax_context["tax_type"],
+            "place_of_supply": tax_context["place_of_supply"],
             "grand_total": grand_total,
             "invoice_image_path": invoice_image_path,
             "ocr_text": ocr_text or None,
@@ -1491,10 +2035,7 @@ async def purchase_save(request: Request):
 
     purchase_id = result.lastrowid
 
-    for i in range(len(material_id)):
-
-        if not material_id[i]:
-            continue
+    for item in calculated_lines:
 
         db.execute(
             text("""
@@ -1506,6 +2047,12 @@ async def purchase_save(request: Request):
                     unit_price,
                     gst_percent,
                     gst_amount,
+                    cgst_percent,
+                    sgst_percent,
+                    igst_percent,
+                    cgst_amount,
+                    sgst_amount,
+                    igst_amount,
                     line_total
                 )
                 VALUES
@@ -1516,17 +2063,29 @@ async def purchase_save(request: Request):
                     :unit_price,
                     :gst_percent,
                     :gst_amount,
+                    :cgst_percent,
+                    :sgst_percent,
+                    :igst_percent,
+                    :cgst_amount,
+                    :sgst_amount,
+                    :igst_amount,
                     :line_total
                 )
             """),
             {
                 "purchase_id": purchase_id,
-                "material_id": int(material_id[i]),
-                "quantity": float(qty[i]),
-                "unit_price": float(rate[i]),
-                "gst_percent": float(gst_percent[i]),
-                "gst_amount": float(gst_amount[i]),
-                "line_total": float(line_total[i]),
+                "material_id": item["item_id"],
+                "quantity": item["quantity"],
+                "unit_price": item["rate"],
+                "gst_percent": item["gst_percent"],
+                "gst_amount": item["gst_amount"],
+                "cgst_percent": item["cgst_percent"],
+                "sgst_percent": item["sgst_percent"],
+                "igst_percent": item["igst_percent"],
+                "cgst_amount": item["cgst_amount"],
+                "sgst_amount": item["sgst_amount"],
+                "igst_amount": item["igst_amount"],
+                "line_total": item["line_total"],
             },
         )
 
@@ -1536,7 +2095,7 @@ async def purchase_save(request: Request):
                 SET stock_qty = stock_qty + :qty
                 WHERE id = :material_id
             """),
-            {"qty": float(qty[i]), "material_id": int(material_id[i])},
+            {"qty": item["quantity"], "material_id": item["item_id"]},
         )
 
     db.commit()
@@ -1579,6 +2138,7 @@ def purchase_delete(purchase_id: int):
 def purchase_edit(purchase_id: int, request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     purchase = (
         db.execute(
@@ -1607,10 +2167,12 @@ def purchase_edit(purchase_id: int, request: Request):
     )
 
     suppliers = db.execute(text("""
-            SELECT id,supplier_name
+            SELECT id,supplier_name,company_name,gst_number,state
             FROM suppliers
-            ORDER BY supplier_name
+            ORDER BY company_name
         """)).fetchall()
+
+    company = db.execute(text("SELECT state, gst_number FROM company LIMIT 1")).mappings().first() or {}
 
     materials = db.execute(text("""
             SELECT
@@ -1632,6 +2194,7 @@ def purchase_edit(purchase_id: int, request: Request):
             "items": items,
             "suppliers": suppliers,
             "materials": materials,
+            "company": company,
         },
     )
 
@@ -1648,11 +2211,10 @@ async def purchase_update(request: Request):
 
     purchase_id = int(form.get("purchase_id"))
 
-    purchase_no = form.get("purchase_no")
-    purchase_date = form.get("purchase_date")
     supplier_id = int(form.get("supplier_id"))
     invoice_no = form.get("invoice_no", "")
     invoice_date = form.get("invoice_date", "")
+    purchase_date = invoice_date
 
     material_id = form.getlist("material_id")
     qty = form.getlist("qty")
@@ -1703,10 +2265,16 @@ async def purchase_update(request: Request):
     )
 
     # ----------------------------
-    # Calculate Total
+    # Calculate GST and Total
     # ----------------------------
 
-    grand_total = sum(float(x or 0) for x in line_total)
+    tax_context = transaction_tax_context(db, "suppliers", supplier_id)
+    calculated_lines = calculate_gst_lines(material_id, qty, rate, gst_percent, tax_context["intra_state"])
+    gst_total = sum(item["gst_amount"] for item in calculated_lines)
+    cgst_total = sum(item["cgst_amount"] for item in calculated_lines)
+    sgst_total = sum(item["sgst_amount"] for item in calculated_lines)
+    igst_total = sum(item["igst_amount"] for item in calculated_lines)
+    grand_total = sum(item["line_total"] for item in calculated_lines)
 
     # ----------------------------
     # Update Header
@@ -1720,6 +2288,12 @@ async def purchase_update(request: Request):
                 supplier_id=:supplier_id,
                 invoice_no=:invoice_no,
                 invoice_date=:invoice_date,
+                gst_amount=:gst_amount,
+                cgst_amount=:cgst_amount,
+                sgst_amount=:sgst_amount,
+                igst_amount=:igst_amount,
+                tax_type=:tax_type,
+                place_of_supply=:place_of_supply,
                 grand_total=:grand_total
             WHERE purchase_id=:purchase_id
         """),
@@ -1729,6 +2303,12 @@ async def purchase_update(request: Request):
             "supplier_id": supplier_id,
             "invoice_no": invoice_no,
             "invoice_date": invoice_date if invoice_date else None,
+            "gst_amount": gst_total,
+            "cgst_amount": cgst_total,
+            "sgst_amount": sgst_total,
+            "igst_amount": igst_total,
+            "tax_type": tax_context["tax_type"],
+            "place_of_supply": tax_context["place_of_supply"],
             "grand_total": grand_total,
         },
     )
@@ -1737,10 +2317,7 @@ async def purchase_update(request: Request):
     # Save New Items
     # ----------------------------
 
-    for i in range(len(material_id)):
-
-        if not material_id[i]:
-            continue
+    for item in calculated_lines:
 
         db.execute(
             text("""
@@ -1752,6 +2329,12 @@ async def purchase_update(request: Request):
                     unit_price,
                     gst_percent,
                     gst_amount,
+                    cgst_percent,
+                    sgst_percent,
+                    igst_percent,
+                    cgst_amount,
+                    sgst_amount,
+                    igst_amount,
                     line_total
                 )
                 VALUES
@@ -1762,17 +2345,29 @@ async def purchase_update(request: Request):
                     :unit_price,
                     :gst_percent,
                     :gst_amount,
+                    :cgst_percent,
+                    :sgst_percent,
+                    :igst_percent,
+                    :cgst_amount,
+                    :sgst_amount,
+                    :igst_amount,
                     :line_total
                 )
             """),
             {
                 "purchase_id": purchase_id,
-                "material_id": int(material_id[i]),
-                "quantity": float(qty[i]),
-                "unit_price": float(rate[i]),
-                "gst_percent": float(gst_percent[i]),
-                "gst_amount": float(gst_amount[i]),
-                "line_total": float(line_total[i]),
+                "material_id": item["item_id"],
+                "quantity": item["quantity"],
+                "unit_price": item["rate"],
+                "gst_percent": item["gst_percent"],
+                "gst_amount": item["gst_amount"],
+                "cgst_percent": item["cgst_percent"],
+                "sgst_percent": item["sgst_percent"],
+                "igst_percent": item["igst_percent"],
+                "cgst_amount": item["cgst_amount"],
+                "sgst_amount": item["sgst_amount"],
+                "igst_amount": item["igst_amount"],
+                "line_total": item["line_total"],
             },
         )
 
@@ -1785,7 +2380,7 @@ async def purchase_update(request: Request):
                     stock_qty + :qty
                 WHERE id=:material_id
             """),
-            {"qty": float(qty[i]), "material_id": int(material_id[i])},
+            {"qty": item["quantity"], "material_id": item["item_id"]},
         )
 
     db.commit()
@@ -1812,7 +2407,7 @@ def sales_page(request: Request, from_date: str = None, to_date: str = None):
                 s.id,
                 s.invoice_number,
                 s.sale_date,
-                c.customer_name,
+                c.company_name,
                 s.grand_total
             FROM sales s
             LEFT JOIN customers c
@@ -1876,47 +2471,35 @@ def sales_page(request: Request, from_date: str = None, to_date: str = None):
 def sales_add(request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     customers = db.execute(text("""
             SELECT
                 id,
-                customer_name
+                customer_name,
+                COALESCE(NULLIF(company_name, ''), customer_name) AS company_name,
+                gst_number,
+                state
             FROM customers
-            ORDER BY customer_name
+            ORDER BY company_name
         """)).fetchall()
+
+    company = db.execute(text("SELECT state, gst_number FROM company LIMIT 1")).mappings().first() or {}
 
     products = db.execute(text("""
             SELECT
                 id,
                 product_name,
                 sale_price,
+                purchase_price,
+                COALESCE(NULLIF(sale_price, 0), purchase_price, 0) AS entry_rate,
                 gst_percent,
                 stock_qty
             FROM products
             ORDER BY product_name
         """)).fetchall()
 
-    last_sale = db.execute(text("""
-            SELECT invoice_number
-            FROM sales
-            ORDER BY id DESC
-            LIMIT 1
-        """)).fetchone()
-
-    if last_sale:
-
-        try:
-            last_no = int(last_sale.invoice_number.replace("SAL", ""))
-
-            invoice_number = f"SAL{last_no+1:06d}"
-
-        except:
-
-            invoice_number = "SAL000001"
-
-    else:
-
-        invoice_number = "SAL000001"
+    invoice_number = next_sales_invoice_number(db, date.today())
 
     db.close()
 
@@ -1928,6 +2511,7 @@ def sales_add(request: Request):
             "products": products,
             "invoice_number": invoice_number,
             "today": date.today().strftime("%Y-%m-%d"),
+            "company": company,
         },
     )
 
@@ -1937,8 +2521,7 @@ async def sales_save(request: Request):
 
     form = await request.form()
 
-    invoice_number = form.get("invoice_number")
-    sale_date = form.get("sale_date")
+    sale_date = form.get("invoice_date")
     customer_id = int(form.get("customer_id"))
 
     product_id = form.getlist("product_id")
@@ -1948,19 +2531,29 @@ async def sales_save(request: Request):
     gst_amount = form.getlist("gst_amount")
     line_total = form.getlist("line_total")
 
+    try:
+        parsed_quantities = [float(value) for value in qty]
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Product quantity must be a whole number")
+    if any(value < 1 or not value.is_integer() for value in parsed_quantities):
+        raise HTTPException(status_code=400, detail="Product quantity must be a whole number of 1 or more")
+
     db = SessionLocal()
+    ensure_gst_component_columns(db)
+    try:
+        invoice_date = date.fromisoformat(str(sale_date))
+    except (TypeError, ValueError):
+        invoice_date = date.today()
+    invoice_number = next_sales_invoice_number(db, invoice_date, reserve=True)
 
-    total_amount = 0
-    total_gst = 0
-    grand_total = 0
-
-    for i in range(len(product_id)):
-
-        total_amount += float(qty[i]) * float(rate[i])
-
-        total_gst += float(gst_amount[i])
-
-        grand_total += float(line_total[i])
+    tax_context = transaction_tax_context(db, "customers", customer_id)
+    calculated_lines = calculate_gst_lines(product_id, qty, rate, gst_percent, tax_context["intra_state"])
+    total_amount = sum(item["basic"] for item in calculated_lines)
+    total_gst = sum(item["gst_amount"] for item in calculated_lines)
+    total_cgst = sum(item["cgst_amount"] for item in calculated_lines)
+    total_sgst = sum(item["sgst_amount"] for item in calculated_lines)
+    total_igst = sum(item["igst_amount"] for item in calculated_lines)
+    grand_total = sum(item["line_total"] for item in calculated_lines)
 
     # ==================================
     # SAVE SALES HEADER
@@ -1975,6 +2568,11 @@ async def sales_save(request: Request):
                 customer_id,
                 total_amount,
                 gst_amount,
+                cgst_amount,
+                sgst_amount,
+                igst_amount,
+                tax_type,
+                place_of_supply,
                 grand_total,
                 created_at
             )
@@ -1985,6 +2583,11 @@ async def sales_save(request: Request):
                 :customer_id,
                 :total_amount,
                 :gst_amount,
+                :cgst_amount,
+                :sgst_amount,
+                :igst_amount,
+                :tax_type,
+                :place_of_supply,
                 :grand_total,
                 NOW()
             )
@@ -1995,6 +2598,11 @@ async def sales_save(request: Request):
             "customer_id": customer_id,
             "total_amount": total_amount,
             "gst_amount": total_gst,
+            "cgst_amount": total_cgst,
+            "sgst_amount": total_sgst,
+            "igst_amount": total_igst,
+            "tax_type": tax_context["tax_type"],
+            "place_of_supply": tax_context["place_of_supply"],
             "grand_total": grand_total,
         },
     )
@@ -2005,10 +2613,7 @@ async def sales_save(request: Request):
     # SAVE SALES ITEMS
     # ==================================
 
-    for i in range(len(product_id)):
-
-        if not product_id[i]:
-            continue
+    for item in calculated_lines:
 
         db.execute(
             text("""
@@ -2018,6 +2623,14 @@ async def sales_save(request: Request):
                     product_id,
                     quantity,
                     price,
+                    gst_percent,
+                    gst_amount,
+                    cgst_percent,
+                    sgst_percent,
+                    igst_percent,
+                    cgst_amount,
+                    sgst_amount,
+                    igst_amount,
                     total
                 )
                 VALUES
@@ -2026,15 +2639,31 @@ async def sales_save(request: Request):
                     :product_id,
                     :quantity,
                     :price,
+                    :gst_percent,
+                    :gst_amount,
+                    :cgst_percent,
+                    :sgst_percent,
+                    :igst_percent,
+                    :cgst_amount,
+                    :sgst_amount,
+                    :igst_amount,
                     :total
                 )
             """),
             {
                 "sale_id": sale_id,
-                "product_id": int(product_id[i]),
-                "quantity": float(qty[i]),
-                "price": float(rate[i]),
-                "total": float(line_total[i]),
+                "product_id": item["item_id"],
+                "quantity": item["quantity"],
+                "price": item["rate"],
+                "gst_percent": item["gst_percent"],
+                "gst_amount": item["gst_amount"],
+                "cgst_percent": item["cgst_percent"],
+                "sgst_percent": item["sgst_percent"],
+                "igst_percent": item["igst_percent"],
+                "cgst_amount": item["cgst_amount"],
+                "sgst_amount": item["sgst_amount"],
+                "igst_amount": item["igst_amount"],
+                "total": item["line_total"],
             },
         )
 
@@ -2049,7 +2678,7 @@ async def sales_save(request: Request):
                     stock_qty - :qty
                 WHERE id = :product_id
             """),
-            {"qty": float(qty[i]), "product_id": int(product_id[i])},
+            {"qty": item["quantity"], "product_id": item["item_id"]},
         )
 
     db.commit()
@@ -2062,6 +2691,7 @@ async def sales_save(request: Request):
 def sales_edit(sale_id: int, request: Request):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     sale = (
         db.execute(
@@ -2092,10 +2722,15 @@ def sales_edit(sale_id: int, request: Request):
     customers = db.execute(text("""
             SELECT
                 id,
-                customer_name
+                customer_name,
+                company_name,
+                gst_number,
+                state
             FROM customers
-            ORDER BY customer_name
+            ORDER BY company_name
         """)).fetchall()
+
+    company = db.execute(text("SELECT state, gst_number FROM company LIMIT 1")).mappings().first() or {}
 
     products = db.execute(text("""
             SELECT
@@ -2118,6 +2753,7 @@ def sales_edit(sale_id: int, request: Request):
             "items": items,
             "customers": customers,
             "products": products,
+            "company": company,
         },
     )
 
@@ -2141,6 +2777,7 @@ async def sales_update(request: Request):
     line_total = form.getlist("line_total")
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     # ==================================
     # RESTORE OLD STOCK
@@ -2182,20 +2819,17 @@ async def sales_update(request: Request):
     )
 
     # ==================================
-    # TOTALS
+    # GST TOTALS
     # ==================================
 
-    total_amount = 0
-    total_gst = 0
-    grand_total = 0
-
-    for i in range(len(product_id)):
-
-        total_amount += float(qty[i]) * float(rate[i])
-
-        total_gst += float(gst_amount[i])
-
-        grand_total += float(line_total[i])
+    tax_context = transaction_tax_context(db, "customers", customer_id)
+    calculated_lines = calculate_gst_lines(product_id, qty, rate, gst_percent, tax_context["intra_state"])
+    total_amount = sum(item["basic"] for item in calculated_lines)
+    total_gst = sum(item["gst_amount"] for item in calculated_lines)
+    total_cgst = sum(item["cgst_amount"] for item in calculated_lines)
+    total_sgst = sum(item["sgst_amount"] for item in calculated_lines)
+    total_igst = sum(item["igst_amount"] for item in calculated_lines)
+    grand_total = sum(item["line_total"] for item in calculated_lines)
 
     # ==================================
     # UPDATE HEADER
@@ -2209,6 +2843,11 @@ async def sales_update(request: Request):
                 customer_id=:customer_id,
                 total_amount=:total_amount,
                 gst_amount=:gst_amount,
+                cgst_amount=:cgst_amount,
+                sgst_amount=:sgst_amount,
+                igst_amount=:igst_amount,
+                tax_type=:tax_type,
+                place_of_supply=:place_of_supply,
                 grand_total=:grand_total
             WHERE id=:sale_id
         """),
@@ -2218,6 +2857,11 @@ async def sales_update(request: Request):
             "customer_id": customer_id,
             "total_amount": total_amount,
             "gst_amount": total_gst,
+            "cgst_amount": total_cgst,
+            "sgst_amount": total_sgst,
+            "igst_amount": total_igst,
+            "tax_type": tax_context["tax_type"],
+            "place_of_supply": tax_context["place_of_supply"],
             "grand_total": grand_total,
         },
     )
@@ -2226,10 +2870,7 @@ async def sales_update(request: Request):
     # SAVE NEW ITEMS
     # ==================================
 
-    for i in range(len(product_id)):
-
-        if not product_id[i]:
-            continue
+    for item in calculated_lines:
 
         db.execute(
             text("""
@@ -2239,6 +2880,14 @@ async def sales_update(request: Request):
                     product_id,
                     quantity,
                     price,
+                    gst_percent,
+                    gst_amount,
+                    cgst_percent,
+                    sgst_percent,
+                    igst_percent,
+                    cgst_amount,
+                    sgst_amount,
+                    igst_amount,
                     total
                 )
                 VALUES
@@ -2247,15 +2896,31 @@ async def sales_update(request: Request):
                     :product_id,
                     :quantity,
                     :price,
+                    :gst_percent,
+                    :gst_amount,
+                    :cgst_percent,
+                    :sgst_percent,
+                    :igst_percent,
+                    :cgst_amount,
+                    :sgst_amount,
+                    :igst_amount,
                     :total
                 )
             """),
             {
                 "sale_id": sale_id,
-                "product_id": int(product_id[i]),
-                "quantity": float(qty[i]),
-                "price": float(rate[i]),
-                "total": float(line_total[i]),
+                "product_id": item["item_id"],
+                "quantity": item["quantity"],
+                "price": item["rate"],
+                "gst_percent": item["gst_percent"],
+                "gst_amount": item["gst_amount"],
+                "cgst_percent": item["cgst_percent"],
+                "sgst_percent": item["sgst_percent"],
+                "igst_percent": item["igst_percent"],
+                "cgst_amount": item["cgst_amount"],
+                "sgst_amount": item["sgst_amount"],
+                "igst_amount": item["igst_amount"],
+                "total": item["line_total"],
             },
         )
 
@@ -2270,7 +2935,7 @@ async def sales_update(request: Request):
                     stock_qty - :qty
                 WHERE id=:product_id
             """),
-            {"qty": float(qty[i]), "product_id": int(product_id[i])},
+            {"qty": item["quantity"], "product_id": item["item_id"]},
         )
 
     db.commit()
@@ -2350,7 +3015,9 @@ def purchase_reports(
     request: Request, from_date: str = None, to_date: str = None, supplier_id: int = 0
 ):
 
+    customer_name = company_name
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     if not from_date:
         from_date = (date.today() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -2364,16 +3031,18 @@ def purchase_reports(
             SELECT
 
                 p.purchase_id,
-                p.purchase_no,
                 p.purchase_date,
-                s.supplier_name,
-                p.invoice_no,
+                COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
+                COALESCE(NULLIF(p.invoice_no, ''), p.purchase_no) AS invoice_no,
 
                 COUNT(pi.purchase_item_id) AS total_items,
 
                 IFNULL(SUM(pi.quantity),0) AS total_qty,
 
                 IFNULL(SUM(pi.gst_amount),0) AS gst_amount,
+                IFNULL(p.cgst_amount,0) AS cgst_amount,
+                IFNULL(p.sgst_amount,0) AS sgst_amount,
+                IFNULL(p.igst_amount,0) AS igst_amount,
 
                 p.grand_total
 
@@ -2394,10 +3063,14 @@ def purchase_reports(
 
             GROUP BY
                 p.purchase_id,
-                p.purchase_no,
                 p.purchase_date,
                 s.supplier_name,
+                s.company_name,
                 p.invoice_no,
+                p.purchase_no,
+                p.cgst_amount,
+                p.sgst_amount,
+                p.igst_amount,
                 p.grand_total
 
             ORDER BY
@@ -2437,9 +3110,10 @@ def purchase_reports(
     suppliers = db.execute(text("""
             SELECT
                 id,
-                supplier_name
+                supplier_name,
+                company_name
             FROM suppliers
-            ORDER BY supplier_name
+            ORDER BY company_name
         """)).mappings().all()
 
     db.close()
@@ -2465,6 +3139,7 @@ def sales_reports(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     if not from_date:
         from_date = (date.today() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -2485,13 +3160,16 @@ def sales_reports(
                 s.invoice_number,
                 s.sale_date,
 
-                c.customer_name,
+                COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
 
                 COUNT(si.product_id) AS total_items,
 
                 IFNULL(SUM(si.quantity),0) AS total_qty,
 
                 IFNULL(s.gst_amount,0) AS gst_amount,
+                IFNULL(s.cgst_amount,0) AS cgst_amount,
+                IFNULL(s.sgst_amount,0) AS sgst_amount,
+                IFNULL(s.igst_amount,0) AS igst_amount,
 
                 s.grand_total
 
@@ -2517,7 +3195,11 @@ def sales_reports(
                 s.invoice_number,
                 s.sale_date,
                 c.customer_name,
+                c.company_name,
                 s.gst_amount,
+                s.cgst_amount,
+                s.sgst_amount,
+                s.igst_amount,
                 s.grand_total
 
             ORDER BY
@@ -2570,11 +3252,12 @@ def sales_reports(
             SELECT
 
                 id,
-                customer_name
+                customer_name,
+                company_name
 
             FROM customers
 
-            ORDER BY customer_name
+            ORDER BY company_name
 
         """)).mappings().all()
 
@@ -2607,6 +3290,7 @@ def monthly_purchase_report(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     # ===============================
     # Supplier List
@@ -2615,9 +3299,10 @@ def monthly_purchase_report(
     suppliers = db.execute(text("""
             SELECT
                 id,
-                supplier_name
+                supplier_name,
+                company_name
             FROM suppliers
-            ORDER BY supplier_name
+            ORDER BY company_name
         """)).mappings().all()
 
     # ===============================
@@ -2650,6 +3335,9 @@ def monthly_purchase_report(
                 IFNULL(SUM(pi.quantity),0) AS total_qty,
 
                 IFNULL(SUM(pi.gst_amount),0) AS gst_amount,
+                IFNULL(SUM(pi.cgst_amount),0) AS cgst_amount,
+                IFNULL(SUM(pi.sgst_amount),0) AS sgst_amount,
+                IFNULL(SUM(pi.igst_amount),0) AS igst_amount,
 
                 IFNULL(SUM(p.grand_total),0) AS purchase_amount
 
@@ -2705,6 +3393,10 @@ def monthly_purchase_report(
                 IFNULL(SUM(pi.gst_amount),0)
                     AS total_gst,
 
+                IFNULL(SUM(pi.cgst_amount),0) AS total_cgst,
+                IFNULL(SUM(pi.sgst_amount),0) AS total_sgst,
+                IFNULL(SUM(pi.igst_amount),0) AS total_igst,
+
                 IFNULL(SUM(p.grand_total),0)
                     AS purchase_amount
 
@@ -2747,6 +3439,9 @@ def monthly_purchase_report(
             "purchase_amount": summary["purchase_amount"],
             "total_qty": summary["total_qty"],
             "total_gst": summary["total_gst"],
+            "total_cgst": summary["total_cgst"],
+            "total_sgst": summary["total_sgst"],
+            "total_igst": summary["total_igst"],
         },
     )
 
@@ -2763,6 +3458,7 @@ def monthly_sales_report(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     # =====================================
     # Customer List
@@ -2771,9 +3467,10 @@ def monthly_sales_report(
     customers = db.execute(text("""
             SELECT
                 id,
-                customer_name
+                customer_name,
+                company_name
             FROM customers
-            ORDER BY customer_name
+            ORDER BY company_name
         """)).mappings().all()
 
     # =====================================
@@ -2803,6 +3500,9 @@ def monthly_sales_report(
             SUM(x.total_qty) AS total_qty,
 
             SUM(x.gst_amount) AS gst_amount,
+            SUM(x.cgst_amount) AS cgst_amount,
+            SUM(x.sgst_amount) AS sgst_amount,
+            SUM(x.igst_amount) AS igst_amount,
 
             SUM(x.grand_total) AS sale_amount
 
@@ -2818,6 +3518,10 @@ def monthly_sales_report(
                 s.customer_id,
 
                 s.gst_amount,
+
+                s.cgst_amount,
+                s.sgst_amount,
+                s.igst_amount,
 
                 s.grand_total,
 
@@ -2845,6 +3549,9 @@ def monthly_sales_report(
                 s.sale_date,
                 s.customer_id,
                 s.gst_amount,
+                s.cgst_amount,
+                s.sgst_amount,
+                s.igst_amount,
                 s.grand_total
 
         ) x
@@ -2881,6 +3588,9 @@ def monthly_sales_report(
             SUM(total_qty) AS total_qty,
 
             SUM(gst_amount) AS total_gst,
+            SUM(cgst_amount) AS total_cgst,
+            SUM(sgst_amount) AS total_sgst,
+            SUM(igst_amount) AS total_igst,
 
             SUM(grand_total) AS sale_amount
 
@@ -2892,6 +3602,10 @@ def monthly_sales_report(
                 s.id,
 
                 s.gst_amount,
+
+                s.cgst_amount,
+                s.sgst_amount,
+                s.igst_amount,
 
                 s.grand_total,
 
@@ -2917,6 +3631,9 @@ def monthly_sales_report(
 
                 s.id,
                 s.gst_amount,
+                s.cgst_amount,
+                s.sgst_amount,
+                s.igst_amount,
                 s.grand_total
 
         ) x
@@ -2944,8 +3661,372 @@ def monthly_sales_report(
             "sale_amount": summary["sale_amount"],
             "total_qty": summary["total_qty"],
             "total_gst": summary["total_gst"],
+            "total_cgst": summary["total_cgst"],
+            "total_sgst": summary["total_sgst"],
+            "total_igst": summary["total_igst"],
         },
     )
+
+
+GST_REPORT_MONTHS = [
+    {"id": month_number, "name": calendar.month_name[month_number]}
+    for month_number in range(1, 13)
+]
+
+
+def is_intra_state_gst(company, party_gst_number="", party_state=""):
+    company_state = normalize_state_name((company or {}).get("state"))
+    normalized_party_state = normalize_state_name(party_state)
+    if company_state and normalized_party_state:
+        return company_state == normalized_party_state
+
+    company_gst = str((company or {}).get("gst_number") or "").strip()
+    party_gst = str(party_gst_number or "").strip()
+
+    company_code = company_gst[:2] if company_gst[:2].isdigit() else ""
+    party_code = party_gst[:2] if party_gst[:2].isdigit() else ""
+    if company_code and party_code:
+        return company_code == party_code
+    return False
+
+
+def load_gst_report(db, report_type, month, year):
+    company = db.execute(text("SELECT * FROM company LIMIT 1")).mappings().first() or {}
+
+    if report_type == "sales":
+        rows = db.execute(
+            text("""
+                SELECT
+                    s.id AS record_id,
+                    s.sale_date AS report_date,
+                    COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS party_name,
+                    c.gst_number,
+                    c.state AS party_state,
+                    s.invoice_number AS invoice_no,
+                    IFNULL(s.total_amount, 0) AS basic,
+                    IFNULL(s.gst_amount, 0) AS gst_total,
+                    IFNULL(s.cgst_amount, 0) AS stored_cgst,
+                    IFNULL(s.sgst_amount, 0) AS stored_sgst,
+                    IFNULL(s.igst_amount, 0) AS stored_igst,
+                    IFNULL(s.grand_total, 0) AS grand_total
+                FROM sales s
+                LEFT JOIN customers c ON c.id = s.customer_id
+                WHERE MONTH(s.sale_date) = :month
+                  AND YEAR(s.sale_date) = :year
+                ORDER BY s.sale_date, s.id
+            """),
+            {"month": month, "year": year},
+        ).mappings().all()
+    else:
+        rows = db.execute(
+            text("""
+                SELECT
+                    p.purchase_id AS record_id,
+                    p.purchase_date AS report_date,
+                    COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS party_name,
+                    s.gst_number,
+                    s.state AS party_state,
+                    COALESCE(NULLIF(p.invoice_no, ''), p.purchase_no) AS invoice_no,
+                    IFNULL(SUM(pi.quantity * pi.unit_price), 0) AS basic,
+                    IFNULL(SUM(pi.gst_amount), 0) AS gst_total,
+                    IFNULL(p.cgst_amount, 0) AS stored_cgst,
+                    IFNULL(p.sgst_amount, 0) AS stored_sgst,
+                    IFNULL(p.igst_amount, 0) AS stored_igst,
+                    IFNULL(p.grand_total, 0) AS grand_total
+                FROM purchase p
+                LEFT JOIN suppliers s ON s.id = p.supplier_id
+                LEFT JOIN purchase_items pi ON pi.purchase_id = p.purchase_id
+                WHERE MONTH(p.purchase_date) = :month
+                  AND YEAR(p.purchase_date) = :year
+                GROUP BY
+                    p.purchase_id,
+                    p.purchase_date,
+                    s.supplier_name,
+                    s.company_name,
+                    s.gst_number,
+                    s.state,
+                    p.invoice_no,
+                    p.purchase_no,
+                    p.cgst_amount,
+                    p.sgst_amount,
+                    p.igst_amount,
+                    p.grand_total
+                ORDER BY p.purchase_date, p.purchase_id
+            """),
+            {"month": month, "year": year},
+        ).mappings().all()
+
+    report = []
+    for source_row in rows:
+        row = dict(source_row)
+        gst_total = round(float(row.get("gst_total") or 0), 2)
+        stored_cgst = round(float(row.get("stored_cgst") or 0), 2)
+        stored_sgst = round(float(row.get("stored_sgst") or 0), 2)
+        stored_igst = round(float(row.get("stored_igst") or 0), 2)
+        if round(stored_cgst + stored_sgst + stored_igst, 2) == gst_total and gst_total > 0:
+            cgst, sgst, igst = stored_cgst, stored_sgst, stored_igst
+        elif is_intra_state_gst(company, row.get("gst_number"), row.get("party_state")):
+            cgst = round(gst_total / 2, 2)
+            sgst = round(gst_total - cgst, 2)
+            igst = 0.0
+        else:
+            cgst = 0.0
+            sgst = 0.0
+            igst = gst_total
+
+        row.update(
+            basic=round(float(row.get("basic") or 0), 2),
+            cgst=cgst,
+            sgst=sgst,
+            igst=igst,
+            grand_total=round(float(row.get("grand_total") or 0), 2),
+        )
+        report.append(row)
+
+    summary = {
+        "basic": sum(row["basic"] for row in report),
+        "cgst": sum(row["cgst"] for row in report),
+        "sgst": sum(row["sgst"] for row in report),
+        "igst": sum(row["igst"] for row in report),
+        "grand_total": sum(row["grand_total"] for row in report),
+    }
+    return company, report, summary
+
+
+def gst_report_years(db, report_type, selected_year):
+    table_name = "sales" if report_type == "sales" else "purchase"
+    date_column = "sale_date" if report_type == "sales" else "purchase_date"
+    rows = db.execute(
+        text(f"""
+            SELECT DISTINCT YEAR({date_column}) AS report_year
+            FROM {table_name}
+            WHERE {date_column} IS NOT NULL
+            ORDER BY report_year DESC
+        """)
+    ).scalars().all()
+    return sorted({date.today().year, int(selected_year), *[int(value) for value in rows if value]}, reverse=True)
+
+
+def build_gst_report_pdf(company, report, summary, report_type, month, year):
+    output = BytesIO()
+    report_title = "Sales GST Report" if report_type == "sales" else "Purchase GST Report"
+    party_label = "Customer Company" if report_type == "sales" else "Supplier Company"
+    month_label = calendar.month_name[month]
+
+    document = SimpleDocTemplate(
+        output,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=14 * mm,
+        title=f"{report_title} - {month_label} {year}",
+        author=str((company or {}).get("company_name") or "ManPro Plus"),
+    )
+    styles = getSampleStyleSheet()
+    company_style = ParagraphStyle(
+        "GSTCompany",
+        parent=styles["Title"],
+        alignment=TA_CENTER,
+        fontName="Helvetica-Bold",
+        fontSize=16,
+        leading=19,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=3,
+    )
+    address_style = ParagraphStyle(
+        "GSTAddress",
+        parent=styles["Normal"],
+        alignment=TA_CENTER,
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor("#475569"),
+    )
+    report_style = ParagraphStyle(
+        "GSTTitle",
+        parent=styles["Heading2"],
+        alignment=TA_CENTER,
+        fontSize=11,
+        leading=14,
+        textColor=colors.HexColor("#0e7490"),
+        spaceBefore=5,
+        spaceAfter=8,
+    )
+
+    company_name = str((company or {}).get("company_name") or "Company Name")
+    address_parts = [
+        str((company or {}).get(field) or "").strip()
+        for field in ("address", "city", "state", "pincode")
+    ]
+    address = ", ".join(part for part in address_parts if part) or "Company address not configured"
+    gst_number = str((company or {}).get("gst_number") or "Not configured")
+
+    story = [
+        Paragraph(company_name, company_style),
+        Paragraph(address, address_style),
+        Paragraph(f"GSTIN: {gst_number}", address_style),
+        Paragraph(f"{report_title} | {month_label} {year}", report_style),
+    ]
+
+    table_data = [[
+        "Date", party_label, "GST No", "Inv No", "Basic", "CGST", "SGST", "IGST", "Grand Total"
+    ]]
+    for row in report:
+        report_date = row.get("report_date")
+        if hasattr(report_date, "strftime"):
+            report_date = report_date.strftime("%d-%m-%Y")
+        table_data.append([
+            str(report_date or "-"),
+            Paragraph(str(row.get("party_name") or "-"), styles["BodyText"]),
+            str(row.get("gst_number") or "-"),
+            str(row.get("invoice_no") or "-"),
+            f'{row["basic"]:,.2f}',
+            f'{row["cgst"]:,.2f}',
+            f'{row["sgst"]:,.2f}',
+            f'{row["igst"]:,.2f}',
+            f'{row["grand_total"]:,.2f}',
+        ])
+
+    if not report:
+        table_data.append(["No records found for the selected month", "", "", "", "", "", "", "", ""])
+
+    table_data.append([
+        "TOTAL", "", "", "",
+        f'{summary["basic"]:,.2f}',
+        f'{summary["cgst"]:,.2f}',
+        f'{summary["sgst"]:,.2f}',
+        f'{summary["igst"]:,.2f}',
+        f'{summary["grand_total"]:,.2f}',
+    ])
+
+    table = Table(
+        table_data,
+        repeatRows=1,
+        colWidths=[20 * mm, 43 * mm, 34 * mm, 30 * mm, 28 * mm, 23 * mm, 23 * mm, 23 * mm, 31 * mm],
+    )
+    last_row = len(table_data) - 1
+    table_style = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f766e")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ALIGN", (4, 1), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONTNAME", (0, last_row), (-1, last_row), "Helvetica-Bold"),
+        ("BACKGROUND", (0, last_row), (-1, last_row), colors.HexColor("#ccfbf1")),
+        ("GRID", (0, 0), (-1, -1), 0.45, colors.HexColor("#64748b")),
+        ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+        ("LEADING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("SPAN", (0, last_row), (3, last_row)),
+    ]
+    if not report:
+        table_style.extend([
+            ("SPAN", (0, 1), (-1, 1)),
+            ("ALIGN", (0, 1), (-1, 1), "CENTER"),
+            ("TOPPADDING", (0, 1), (-1, 1), 18),
+            ("BOTTOMPADDING", (0, 1), (-1, 1), 18),
+        ])
+    table.setStyle(TableStyle(table_style))
+    story.extend([table, Spacer(1, 3 * mm)])
+
+    def draw_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor("#cbd5e1"))
+        canvas.line(10 * mm, 9 * mm, landscape(A4)[0] - 10 * mm, 9 * mm)
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor("#64748b"))
+        canvas.drawString(10 * mm, 5.5 * mm, "Generated from ManPro Plus ERP")
+        canvas.drawRightString(landscape(A4)[0] - 10 * mm, 5.5 * mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    document.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
+    output.seek(0)
+    return output.getvalue()
+
+
+def render_gst_report(request, report_type, month=0, year=0):
+    blocked = require_company_selection(request)
+    if blocked:
+        return blocked
+    if "user" not in request.session:
+        return RedirectResponse("/login", status_code=303)
+
+    today = date.today()
+    month = month if 1 <= int(month or 0) <= 12 else today.month
+    year = int(year or today.year)
+    db = SessionLocal()
+    ensure_gst_component_columns(db)
+    try:
+        company, report, summary = load_gst_report(db, report_type, month, year)
+        years = gst_report_years(db, report_type, year)
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="gst_report.html",
+        context={
+            "request": request,
+            "company": company,
+            "report": report,
+            "summary": summary,
+            "report_type": report_type,
+            "report_title": "Sales GST Report" if report_type == "sales" else "Purchase GST Report",
+            "party_label": "Customer Company" if report_type == "sales" else "Supplier Company",
+            "report_url": "/sales-gst-report" if report_type == "sales" else "/purchase-gst-report",
+            "pdf_url": "/sales-gst-report/pdf" if report_type == "sales" else "/purchase-gst-report/pdf",
+            "month": month,
+            "month_name": calendar.month_name[month],
+            "year": year,
+            "years": years,
+            "months": GST_REPORT_MONTHS,
+        },
+    )
+
+
+def render_gst_report_pdf(request, report_type, month=0, year=0, download=0):
+    if "user" not in request.session:
+        return RedirectResponse("/login", status_code=303)
+
+    today = date.today()
+    month = month if 1 <= int(month or 0) <= 12 else today.month
+    year = int(year or today.year)
+    db = SessionLocal()
+    ensure_gst_component_columns(db)
+    try:
+        company, report, summary = load_gst_report(db, report_type, month, year)
+    finally:
+        db.close()
+
+    pdf_bytes = build_gst_report_pdf(company, report, summary, report_type, month, year)
+    filename = f'{report_type}-gst-report-{year}-{month:02d}.pdf'
+    disposition = "attachment" if download else "inline"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
+
+
+@app.get("/purchase-gst-report")
+def purchase_gst_report(request: Request, month: int = 0, year: int = 0):
+    return render_gst_report(request, "purchase", month, year)
+
+
+@app.get("/purchase-gst-report/pdf")
+def purchase_gst_report_pdf(request: Request, month: int = 0, year: int = 0, download: int = 0):
+    return render_gst_report_pdf(request, "purchase", month, year, download)
+
+
+@app.get("/sales-gst-report")
+def sales_gst_report(request: Request, month: int = 0, year: int = 0):
+    return render_gst_report(request, "sales", month, year)
+
+
+@app.get("/sales-gst-report/pdf")
+def sales_gst_report_pdf(request: Request, month: int = 0, year: int = 0, download: int = 0):
+    return render_gst_report_pdf(request, "sales", month, year, download)
 
 
 @app.get("/purchase-bank-statement")
@@ -2960,6 +4041,7 @@ def purchase_bank_statement(
         return blocked
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     today = date.today()
 
@@ -2981,7 +4063,7 @@ def purchase_bank_statement(
         text("""
             SELECT
                 p.purchase_date,
-                s.supplier_name,
+                COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
                 s.gst_number,
                 rm.material_name,
                 pi.quantity,
@@ -2989,6 +4071,9 @@ def purchase_bank_statement(
                 (pi.quantity * pi.unit_price) AS taxable_total,
                 pi.gst_percent,
                 pi.gst_amount,
+                pi.cgst_amount,
+                pi.sgst_amount,
+                pi.igst_amount,
                 pi.line_total
             FROM purchase p
             LEFT JOIN suppliers s
@@ -3011,6 +4096,9 @@ def purchase_bank_statement(
         "total_qty": sum(float(row.quantity or 0) for row in report),
         "total_taxable": sum(float(row.taxable_total or 0) for row in report),
         "total_gst": sum(float(row.gst_amount or 0) for row in report),
+        "total_cgst": sum(float(row.cgst_amount or 0) for row in report),
+        "total_sgst": sum(float(row.sgst_amount or 0) for row in report),
+        "total_igst": sum(float(row.igst_amount or 0) for row in report),
         "grand_total": sum(float(row.line_total or 0) for row in report),
     }
 
@@ -3053,6 +4141,7 @@ def sales_bank_statement(
 ):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     today = date.today()
 
@@ -3074,14 +4163,17 @@ def sales_bank_statement(
         text("""
             SELECT
                 s.sale_date,
-                c.customer_name,
+                COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
                 c.gst_number,
                 p.product_name,
                 si.quantity,
                 si.price,
                 (si.quantity * si.price) AS taxable_total,
-                IFNULL(p.gst_percent,0) AS gst_percent,
-                ((si.quantity * si.price) * IFNULL(p.gst_percent,0) / 100) AS gst_amount,
+                IFNULL(NULLIF(si.gst_percent,0),p.gst_percent) AS gst_percent,
+                IFNULL(NULLIF(si.gst_amount,0),((si.quantity * si.price) * IFNULL(p.gst_percent,0) / 100)) AS gst_amount,
+                IFNULL(si.cgst_amount,0) AS cgst_amount,
+                IFNULL(si.sgst_amount,0) AS sgst_amount,
+                IFNULL(si.igst_amount,0) AS igst_amount,
                 si.total AS line_total
             FROM sales s
             LEFT JOIN customers c
@@ -3104,6 +4196,9 @@ def sales_bank_statement(
         "total_qty": sum(float(row.quantity or 0) for row in report),
         "total_taxable": sum(float(row.taxable_total or 0) for row in report),
         "total_gst": sum(float(row.gst_amount or 0) for row in report),
+        "total_cgst": sum(float(row.cgst_amount or 0) for row in report),
+        "total_sgst": sum(float(row.sgst_amount or 0) for row in report),
+        "total_igst": sum(float(row.igst_amount or 0) for row in report),
         "grand_total": sum(float(row.line_total or 0) for row in report),
     }
 
@@ -3382,7 +4477,7 @@ def sync_existing_payment_transactions(db):
     ensure_account_sync_schema(db)
 
     customer_receipts = db.execute(text("""
-        SELECT cp.*, c.customer_name
+        SELECT cp.*, COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name
         FROM customer_payments cp
         LEFT JOIN customers c ON c.id=cp.customer_id
     """)).mappings().all()
@@ -3401,7 +4496,7 @@ def sync_existing_payment_transactions(db):
         )
 
     supplier_payments = db.execute(text("""
-        SELECT sp.*, s.supplier_name
+        SELECT sp.*, COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name
         FROM supplier_payments sp
         LEFT JOIN suppliers s ON s.id=sp.supplier_id
     """)).mappings().all()
@@ -3438,9 +4533,9 @@ def supplier_outstanding_report(
         SELECT
             id,
             supplier_name,
-            company_name
+            COALESCE(NULLIF(company_name, ''), supplier_name) AS company_name
         FROM suppliers
-        ORDER BY supplier_name
+        ORDER BY company_name
     """)).mappings().all()
 
     params = {
@@ -3453,7 +4548,7 @@ def supplier_outstanding_report(
         text("""
             SELECT
                 s.id,
-                s.supplier_name,
+                COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
                 s.company_name,
                 s.mobile,
                 IFNULL(p.purchase_count,0) AS purchase_count,
@@ -3611,7 +4706,7 @@ def supplier_payment_save(
     )
 
     supplier = db.execute(
-        text("SELECT supplier_name FROM suppliers WHERE id=:supplier_id"),
+        text("SELECT COALESCE(NULLIF(company_name, ''), supplier_name) AS supplier_name FROM suppliers WHERE id=:supplier_id"),
         {"supplier_id": supplier_id},
     ).mappings().first()
     sync_account_transaction(
@@ -3671,7 +4766,7 @@ def supplier_payment_update(
     )
 
     supplier = db.execute(
-        text("SELECT supplier_name FROM suppliers WHERE id=:supplier_id"),
+        text("SELECT COALESCE(NULLIF(company_name, ''), supplier_name) AS supplier_name FROM suppliers WHERE id=:supplier_id"),
         {"supplier_id": supplier_id},
     ).mappings().first()
     sync_account_transaction(
@@ -3723,7 +4818,7 @@ def customer_outstanding_report(
         text("""
             SELECT
                 c.id,
-                c.customer_name,
+                COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
                 c.company_name,
                 c.mobile,
                 IFNULL(s.sale_count,0) AS sale_count,
@@ -4090,7 +5185,7 @@ def customer_payment_save(
     )
 
     customer = db.execute(
-        text("SELECT customer_name FROM customers WHERE id=:customer_id"),
+        text("SELECT COALESCE(NULLIF(company_name, ''), customer_name) AS customer_name FROM customers WHERE id=:customer_id"),
         {"customer_id": customer_id},
     ).mappings().first()
     sync_account_transaction(
@@ -4149,7 +5244,7 @@ def customer_payment_update(
     )
 
     customer = db.execute(
-        text("SELECT customer_name FROM customers WHERE id=:customer_id"),
+        text("SELECT COALESCE(NULLIF(company_name, ''), customer_name) AS customer_name FROM customers WHERE id=:customer_id"),
         {"customer_id": customer_id},
     ).mappings().first()
     sync_account_transaction(
@@ -5029,7 +6124,9 @@ def build_ai_chat_context(db, snapshot):
 
     if table_exists(db, "sales") and table_exists(db, "customers"):
         context["recent_sales"] = [dict(row) for row in db.execute(text("""
-            SELECT s.invoice_number, s.sale_date, c.customer_name, s.grand_total
+            SELECT s.invoice_number, s.sale_date,
+                   COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
+                   s.grand_total
             FROM sales s
             LEFT JOIN customers c ON c.id=s.customer_id
             ORDER BY s.sale_date DESC, s.id DESC
@@ -5038,7 +6135,10 @@ def build_ai_chat_context(db, snapshot):
 
     if table_exists(db, "purchase") and table_exists(db, "suppliers"):
         context["recent_purchases"] = [dict(row) for row in db.execute(text("""
-            SELECT p.purchase_no, p.purchase_date, s.supplier_name, p.grand_total
+            SELECT COALESCE(NULLIF(p.invoice_no, ''), p.purchase_no) AS invoice_no,
+                   p.purchase_date,
+                   COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
+                   p.grand_total
             FROM purchase p
             LEFT JOIN suppliers s ON s.id=p.supplier_id
             ORDER BY p.purchase_date DESC, p.purchase_id DESC
@@ -5047,7 +6147,7 @@ def build_ai_chat_context(db, snapshot):
 
     if all(table_exists(db, table_name) for table_name in ("customers", "sales", "customer_payments")):
         context["customer_outstanding"] = [dict(row) for row in db.execute(text("""
-            SELECT c.customer_name,
+            SELECT COALESCE(NULLIF(c.company_name, ''), c.customer_name) AS customer_name,
                    IFNULL(s.sale_amount,0) AS sales,
                    IFNULL(p.received_amount,0) AS received,
                    IFNULL(s.sale_amount,0)-IFNULL(p.received_amount,0) AS balance
@@ -5063,7 +6163,7 @@ def build_ai_chat_context(db, snapshot):
 
     if all(table_exists(db, table_name) for table_name in ("suppliers", "purchase", "supplier_payments")):
         context["supplier_outstanding"] = [dict(row) for row in db.execute(text("""
-            SELECT s.supplier_name,
+            SELECT COALESCE(NULLIF(s.company_name, ''), s.supplier_name) AS supplier_name,
                    IFNULL(p.purchase_amount,0) AS purchases,
                    IFNULL(pay.paid_amount,0) AS paid,
                    IFNULL(p.purchase_amount,0)-IFNULL(pay.paid_amount,0) AS balance
@@ -5382,6 +6482,9 @@ def users_page(request: Request):
 
     db.close()
 
+    if not is_superadmin_user(request):
+        users = [user for user in users if not is_superadmin_role(user.get("role"))]
+
     return templates.TemplateResponse(
         request=request,
         name="users.html",
@@ -5416,6 +6519,9 @@ def user_save(
     blocked = admin_only_redirect(request)
     if blocked:
         return blocked
+
+    if is_superadmin_role(role) and not is_superadmin_user(request):
+        role = "User"
 
     db = SessionLocal()
 
@@ -5471,6 +6577,10 @@ def user_edit(user_id: int, request: Request):
         {"user_id": user_id},
     ).mappings().first()
 
+    if user and is_superadmin_role(user.get("role")) and not is_superadmin_user(request):
+        db.close()
+        return RedirectResponse("/users", status_code=303)
+
     db.close()
 
     return templates.TemplateResponse(
@@ -5495,9 +6605,21 @@ def user_update(
     if blocked:
         return blocked
 
-    password_sql = ", password=:password" if password else ""
-
     db = SessionLocal()
+
+    existing_user = db.execute(
+        text("SELECT role FROM users WHERE id=:user_id"),
+        {"user_id": user_id},
+    ).mappings().first()
+
+    if existing_user and is_superadmin_role(existing_user.get("role")) and not is_superadmin_user(request):
+        db.close()
+        return RedirectResponse("/users", status_code=303)
+
+    if is_superadmin_role(role) and not is_superadmin_user(request):
+        role = "User"
+
+    password_sql = ", password=:password" if password else ""
 
     db.execute(
         text(f"""
@@ -5538,11 +6660,17 @@ def user_delete(user_id: int, request: Request):
     db = SessionLocal()
 
     user = db.execute(
-        text("SELECT username FROM users WHERE id=:user_id"),
+        text("SELECT username, role FROM users WHERE id=:user_id"),
         {"user_id": user_id},
     ).mappings().first()
 
-    if user and user["username"] != current_username:
+    can_manage_user = (
+        user
+        and user["username"] != current_username
+        and (not is_superadmin_role(user.get("role")) or is_superadmin_user(request))
+    )
+
+    if can_manage_user:
         db.execute(text("DELETE FROM users WHERE id=:user_id"), {"user_id": user_id})
         db.commit()
 
@@ -6568,6 +7696,7 @@ async def logout(request: Request):
 def sales_invoice(request: Request, sale_id: int):
 
     db = SessionLocal()
+    ensure_gst_component_columns(db)
 
     # ==========================
     # Company Details

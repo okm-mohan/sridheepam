@@ -111,7 +111,7 @@
 
                     <p>
 
-                        <b>{{ sale.customer_name }}</b>
+                        <b>{{ sale.company_name or sale.customer_name }}</b>
 
                     </p>
 
@@ -147,7 +147,7 @@
 
                     <p>
 
-                        <b>{{ sale.customer_name }}</b>
+                        <b>{{ sale.company_name or sale.customer_name }}</b>
 
                     </p>
 
@@ -330,11 +330,11 @@
 
                         <tr>
 
-                            <td>TAX RATE</td>
+                            <td>TAX TYPE</td>
 
                             <td align="right">
 
-                                {{ sale.tax_rate if sale.tax_rate else "0" }} %
+                                {{ sale.tax_type or "GST" }}
 
                             </td>
 
@@ -342,7 +342,7 @@
 
                         <tr>
 
-                            <td>TAX</td>
+                            <td>TOTAL GST</td>
 
                             <td align="right">
 
@@ -351,6 +351,14 @@
                             </td>
 
                         </tr>
+
+                        {% if sale.cgst_amount or sale.sgst_amount %}
+                        <tr><td>CGST</td><td align="right">&#8377; {{ "%.2f"|format(sale.cgst_amount or 0) }}</td></tr>
+                        <tr><td>SGST</td><td align="right">&#8377; {{ "%.2f"|format(sale.sgst_amount or 0) }}</td></tr>
+                        {% endif %}
+                        {% if sale.igst_amount %}
+                        <tr><td>IGST</td><td align="right">&#8377; {{ "%.2f"|format(sale.igst_amount or 0) }}</td></tr>
+                        {% endif %}
 
                         <tr>
 

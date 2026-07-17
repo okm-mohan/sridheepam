@@ -36,7 +36,7 @@ Edit Supplier
 
             <div>
                 <span class="supplier-panel-label">Supplier Details</span>
-                <h2>{{ supplier.supplier_name }}</h2>
+                <h2>{{ supplier.company_name or supplier.supplier_name }}</h2>
             </div>
 
             <span class="supplier-record-count">
@@ -56,24 +56,13 @@ Edit Supplier
         <div class="supplier-form-grid">
 
             <div class="supplier-form-field wide-field">
-                <label>Supplier Name</label>
-                <div class="supplier-input-shell">
-                    <i class="bi bi-person-badge"></i>
-                    <input type="text"
-                           name="supplier_name"
-                           value="{{ supplier.supplier_name }}"
-                           class="form-control">
-                </div>
-            </div>
-
-            <div class="supplier-form-field">
-                <label>Company Name</label>
+                <label>Supplier Company Name</label>
                 <div class="supplier-input-shell">
                     <i class="bi bi-buildings"></i>
                     <input type="text"
                            name="company_name"
-                           value="{{ supplier.company_name }}"
-                           class="form-control">
+                           value="{{ supplier.company_name or supplier.supplier_name }}"
+                           class="form-control" required>
                 </div>
             </div>
 

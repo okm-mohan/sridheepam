@@ -8,3 +8,4 @@ itsdangerous
 passlib[bcrypt]
 num2words
 openai
+reportlab

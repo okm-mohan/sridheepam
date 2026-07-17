@@ -21,7 +21,8 @@
         </a>
     </section>
 
-    <form method="post" action="/purchase/update" class="purchase-entry-form">
+    <form method="post" action="/purchase/update" class="purchase-entry-form"
+          data-company-state="{{ company.state or '' }}" data-company-gst="{{ company.gst_number or '' }}">
 
         <section class="purchase-entry-panel">
 
@@ -30,28 +31,20 @@
                     <span class="purchase-panel-label">Invoice Header</span>
                     <h2>Supplier Details</h2>
                 </div>
-                <span class="purchase-record-count">{{ purchase.purchase_no }}</span>
+                <span class="purchase-record-count">{{ purchase.invoice_no or purchase.purchase_no }}</span>
             </div>
 
             <div class="form-grid">
 
                 <div>
-                    <label>Purchase No</label>
-                    <div class="purchase-form-shell">
+                    <label>Invoice No</label>
+                    <div class="purchase-form-shell invoice-number-shell">
                     <i class="bi bi-hash"></i>
-                    <input type="text" name="purchase_no" value="{{ purchase.purchase_no }}" readonly>
+                    <input type="text" name="invoice_no" value="{{ purchase.invoice_no or purchase.purchase_no }}" readonly>
                     </div>
                 </div>
 
                 <input type="hidden" name="purchase_id" value="{{ purchase.purchase_id }}">
-
-                <div>
-                    <label>Purchase Date</label>
-                    <div class="purchase-form-shell">
-                    <i class="bi bi-calendar3"></i>
-                    <input type="date" name="purchase_date" value="{{ purchase.purchase_date }}" required>
-                    </div>
-                </div>
 
                 <div>
                     <label>Supplier</label>
@@ -61,8 +54,8 @@
                     <select name="supplier_id" required>
 
                         {% for s in suppliers %}
-                        <option value="{{ s.id }}" {% if s.id==purchase.supplier_id %} selected {% endif %}>
-                            {{ s.supplier_name }}
+                        <option value="{{ s.id }}" data-state="{{ s.state or '' }}" data-gst="{{ s.gst_number or '' }}" {% if s.id==purchase.supplier_id %} selected {% endif %}>
+                            {{ s.company_name or s.supplier_name }}
                         </option>
                         {% endfor %}
 
@@ -72,22 +65,16 @@
                 </div>
 
                 <div>
-                    <label>Invoice No</label>
-                    <div class="purchase-form-shell">
-                    <i class="bi bi-receipt"></i>
-                    <input type="text" name="invoice_no" value="{{ purchase.invoice_no }}">
-                    </div>
-                </div>
-
-                <div>
                     <label>Invoice Date</label>
-                    <div class="purchase-form-shell">
+                    <div class="purchase-form-shell invoice-date-shell">
                     <i class="bi bi-calendar2-check"></i>
-                    <input type="date" name="invoice_date" value="{{ purchase.invoice_date }}">
+                    <input type="date" name="invoice_date" value="{{ purchase.invoice_date or purchase.purchase_date }}" required>
                     </div>
                 </div>
 
             </div>
+
+            <div class="gst-tax-mode" data-tax-mode><i class="bi bi-geo-alt"></i><span>Tax treatment follows the selected supplier's place of supply.</span></div>
 
         </section>
 
@@ -118,7 +105,9 @@
                         <th>Qty</th>
                         <th>Rate</th>
                         <th>GST %</th>
-                        <th>GST Amt</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
                         <th>Total</th>
                         <th class="action-column"><span class="visually-hidden">Action</span></th>
                     </tr>
@@ -158,9 +147,9 @@
                                 onkeyup="calculateRow(this)" onchange="calculateRow(this)">
                         </td>
 
-                        <td>
-                            <input type="number" name="gst_amount" value="{{ item.gst_amount }}" readonly>
-                        </td>
+                        <td><input type="number" name="cgst_amount" value="{{ item.cgst_amount or 0 }}" readonly></td>
+                        <td><input type="number" name="sgst_amount" value="{{ item.sgst_amount or 0 }}" readonly></td>
+                        <td><input type="number" name="igst_amount" value="{{ item.igst_amount or 0 }}" readonly><input type="hidden" name="gst_amount" value="{{ item.gst_amount }}"></td>
 
                         <td>
                             <input type="number" name="line_total" value="{{ item.line_total }}" readonly>
@@ -199,10 +188,10 @@
                     <strong id="subTotal">&#8377; 0.00</strong>
                 </div>
 
-                <div class="total-row">
-                    <span>GST Total</span>
-                    <strong id="gstTotal">&#8377; 0.00</strong>
-                </div>
+                <div class="total-row"><span>CGST Total</span><strong id="cgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>SGST Total</span><strong id="sgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>IGST Total</span><strong id="igstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>GST Total</span><strong id="gstTotal">&#8377; 0.00</strong></div>
 
                 <div class="total-row grand">
                     <span>Grand Total</span>

@@ -51,7 +51,7 @@ Purchase Report
 
                 <div class="col-lg-4">
                     <label class="form-label fw-bold">
-                        Supplier
+                        Supplier Company
                     </label>
 
                     <select
@@ -68,7 +68,7 @@ Purchase Report
                             value="{{ supplier.id }}"
                             {% if supplier.id == supplier_id %}selected{% endif %}>
 
-                            {{ supplier.supplier_name }}
+                            {{ supplier.company_name or supplier.supplier_name }}
 
                         </option>
 
@@ -166,13 +166,11 @@ Purchase Report
 
                         <th width="60">S.No</th>
 
-                        <th>Purchase No</th>
+                        <th>Invoice No</th>
 
                         <th>Date</th>
 
-                        <th>Supplier</th>
-
-                        <th>Invoice No</th>
+                        <th>Supplier Company</th>
 
                         <th class="text-end">
                             Items
@@ -185,6 +183,10 @@ Purchase Report
                         <th class="text-end">
                             GST
                         </th>
+
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
 
                         <th class="text-end">
                             Grand Total
@@ -208,7 +210,7 @@ Purchase Report
 
                             <a href="/purchase/edit/{{ row.purchase_id }}">
 
-                                {{ row.purchase_no }}
+                                {{ row.invoice_no }}
 
                             </a>
 
@@ -222,13 +224,7 @@ Purchase Report
 
                         <td>
 
-                            {{ row.supplier_name }}
-
-                        </td>
-
-                        <td>
-
-                            {{ row.invoice_no }}
+                            {{ row.company_name or row.supplier_name }}
 
                         </td>
 
@@ -249,6 +245,10 @@ Purchase Report
                             {{ "%.2f"|format(row.gst_amount or 0) }}
 
                         </td>
+
+                        <td class="text-end">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
 
                         <td class="text-end fw-bold text-success">
 

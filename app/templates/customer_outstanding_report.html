@@ -77,13 +77,13 @@ Customer Outstanding Report
 
         <form method="post" action="/customer-payment/save" class="customer-receipt-form">
             <div class="customer-payment-field wide">
-                <label>Customer</label>
+                <label>Customer Company</label>
                 <div class="customer-payment-input-shell">
                     <i class="bi bi-person-badge"></i>
                     <select name="customer_id" required>
-                        <option value="">Select Customer</option>
+                        <option value="">Select Customer Company</option>
                         {% for customer in customers %}
-                        <option value="{{ customer.id }}">{{ customer.customer_name }}</option>
+                        <option value="{{ customer.id }}">{{ customer.company_name or customer.customer_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -161,14 +161,14 @@ Customer Outstanding Report
             </div>
 
             <div class="customer-payment-field wide">
-                <label>Customer</label>
+                <label>Customer Company</label>
                 <div class="customer-payment-input-shell">
                     <i class="bi bi-filter"></i>
                     <select name="customer_id">
                         <option value="0">All Customers</option>
                         {% for customer in customers %}
                         <option value="{{ customer.id }}" {% if customer.id == customer_id %}selected{% endif %}>
-                            {{ customer.customer_name }}
+                            {{ customer.company_name or customer.customer_name }}
                         </option>
                         {% endfor %}
                     </select>
@@ -209,7 +209,7 @@ Customer Outstanding Report
                 <thead>
                     <tr>
                         <th>S.No</th>
-                        <th>Customer</th>
+                        <th>Customer Company</th>
                         <th>Sales</th>
                         <th>Sales Value</th>
                         <th>Received</th>
@@ -224,10 +224,10 @@ Customer Outstanding Report
                         <td>{{ loop.index }}</td>
                         <td>
                             <div class="customer-ledger-cell">
-                                <span class="customer-ledger-avatar">{{ row.customer_name[:1]|upper }}</span>
+                                <span class="customer-ledger-avatar">{{ (row.company_name or row.customer_name)[:1]|upper }}</span>
                                 <div>
-                                    <strong>{{ row.customer_name }}</strong>
-                                    <span>{{ row.company_name or row.mobile or "Customer" }}</span>
+                                    <strong>{{ row.company_name or row.customer_name }}</strong>
+                                    <span>{{ row.mobile or "Customer company" }}</span>
                                 </div>
                             </div>
                         </td>
@@ -270,7 +270,7 @@ Customer Outstanding Report
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Customer</th>
+                        <th>Customer Company</th>
                         <th>Amount</th>
                         <th>Mode</th>
                         <th>Reference</th>
@@ -290,7 +290,7 @@ Customer Outstanding Report
                             <select form="customerPaymentUpdate{{ payment.id }}" name="customer_id" required>
                                 {% for customer in customers %}
                                 <option value="{{ customer.id }}" {% if customer.id == payment.customer_id %}selected{% endif %}>
-                                    {{ customer.customer_name }}
+                                    {{ customer.company_name or customer.customer_name }}
                                 </option>
                                 {% endfor %}
                             </select>

@@ -93,7 +93,7 @@ Sales Bank Statement
                     <tr>
                         <th>SNO</th>
                         <th>Date</th>
-                        <th>Customer Name</th>
+                        <th>Customer Company</th>
                         <th>GST No</th>
                         <th>Product</th>
                         <th>Qty</th>
@@ -101,6 +101,9 @@ Sales Bank Statement
                         <th>Total</th>
                         <th>GST</th>
                         <th>GST Price</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
                         <th>Grand Total</th>
                     </tr>
                 </thead>
@@ -109,7 +112,7 @@ Sales Bank Statement
                     <tr>
                         <td>{{ loop.index }}</td>
                         <td>{{ row.sale_date }}</td>
-                        <td>{{ row.customer_name or "-" }}</td>
+                        <td>{{ row.company_name or row.customer_name or "-" }}</td>
                         <td>{{ row.gst_number or "-" }}</td>
                         <td>{{ row.product_name or "-" }}</td>
                         <td class="sales-statement-number">{{ "%.3f"|format(row.quantity or 0) }}</td>
@@ -117,11 +120,14 @@ Sales Bank Statement
                         <td class="sales-statement-number">{{ "%.2f"|format(row.taxable_total or 0) }}</td>
                         <td class="sales-statement-number">{{ "%.2f"|format(row.gst_percent or 0) }}%</td>
                         <td class="sales-statement-number">{{ "%.2f"|format(row.gst_amount or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
                         <td class="sales-statement-number sales-statement-grand">{{ "%.2f"|format(row.line_total or 0) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11">
+                        <td colspan="14">
                             <div class="sales-statement-empty">
                                 <i class="bi bi-file-earmark-spreadsheet"></i>
                                 <strong>No sales rows found for this month</strong>
@@ -138,6 +144,9 @@ Sales Bank Statement
                         <td class="sales-statement-number">{{ "%.2f"|format(summary.total_taxable or 0) }}</td>
                         <td></td>
                         <td class="sales-statement-number">{{ "%.2f"|format(summary.total_gst or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(summary.total_cgst or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(summary.total_sgst or 0) }}</td>
+                        <td class="sales-statement-number">{{ "%.2f"|format(summary.total_igst or 0) }}</td>
                         <td class="sales-statement-number sales-statement-grand">{{ "%.2f"|format(summary.grand_total or 0) }}</td>
                     </tr>
                 </tfoot>

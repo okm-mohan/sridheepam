@@ -1,0 +1,406 @@
+.gst-report-page {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.gst-report-hero {
+    min-height: 164px;
+    padding: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    color: #fff;
+    background:
+        radial-gradient(circle at 90% 15%, rgba(253, 230, 138, .32), transparent 30%),
+        linear-gradient(135deg, #0f172a, #0f766e);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, .16);
+}
+
+.gst-report-kicker {
+    color: #fde68a;
+    font-size: 12px;
+    font-weight: 850;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.gst-report-hero h1 {
+    margin: 7px 0;
+    font-size: 34px;
+    font-weight: 900;
+}
+
+.gst-report-hero p {
+    max-width: 700px;
+    margin: 0;
+    color: #ccfbf1;
+    line-height: 1.6;
+}
+
+.gst-report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.gst-action,
+.gst-filter-submit,
+.gst-download-link {
+    min-height: 44px;
+    border: 0;
+    border-radius: 8px;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 850;
+    cursor: pointer;
+    transition: transform .18s ease, filter .18s ease;
+}
+
+.gst-action:hover,
+.gst-filter-submit:hover,
+.gst-download-link:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.gst-action-preview {
+    color: #0f172a;
+    background: #fde68a;
+}
+
+.gst-action-share {
+    color: #fff;
+    background: #2563eb;
+}
+
+.gst-action-print {
+    color: #fff;
+    background: #ea580c;
+}
+
+.gst-action:disabled {
+    cursor: wait;
+    opacity: .72;
+}
+
+.gst-action.is-loading i {
+    animation: gst-spin .8s linear infinite;
+}
+
+@keyframes gst-spin {
+    to { transform: rotate(360deg); }
+}
+
+.gst-filter-panel {
+    padding: 20px 22px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .07);
+}
+
+.gst-filter-form {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.gst-filter-field {
+    min-width: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.gst-filter-field label {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 850;
+}
+
+.gst-filter-input {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: #fff;
+}
+
+.gst-filter-input:focus-within {
+    border-color: #0f766e;
+    box-shadow: 0 0 0 4px rgba(15, 118, 110, .11);
+}
+
+.gst-filter-input i {
+    color: #0f766e;
+}
+
+.gst-filter-input select {
+    width: 100%;
+    min-height: 42px;
+    border: 0;
+    outline: 0;
+    color: #0f172a;
+    background: transparent;
+    font-weight: 750;
+}
+
+.gst-filter-submit {
+    color: #fff;
+    background: #0f766e;
+}
+
+.gst-download-link {
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+}
+
+.gst-a4-sheet {
+    width: 100%;
+    max-width: 297mm;
+    min-height: 210mm;
+    margin: 0 auto;
+    padding: 16mm 12mm 12mm;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #0f172a;
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+}
+
+.gst-sheet-header {
+    padding-bottom: 11px;
+    border-bottom: 2px solid #0f172a;
+    text-align: center;
+}
+
+.gst-sheet-header h2 {
+    margin: 0 0 4px;
+    font-size: 23px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.gst-sheet-header p,
+.gst-sheet-header small {
+    display: block;
+    margin: 0;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.gst-sheet-title {
+    margin-top: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.gst-sheet-title strong {
+    color: #0f766e;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+}
+
+.gst-sheet-title span {
+    padding: 4px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    background: #f8fafc;
+}
+
+.gst-table-wrap {
+    margin-top: 14px;
+    overflow-x: auto;
+}
+
+.gst-report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.gst-report-table th,
+.gst-report-table td {
+    padding: 8px 7px;
+    border: 1px solid #94a3b8;
+    color: #0f172a;
+    font-size: 11px;
+    vertical-align: middle;
+}
+
+.gst-report-table th {
+    color: #fff;
+    background: #0f766e;
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.gst-report-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.gst-date,
+.gst-code,
+.gst-number {
+    white-space: nowrap;
+}
+
+.gst-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.gst-grand {
+    font-weight: 900;
+}
+
+.gst-report-table tfoot td {
+    color: #0f172a;
+    background: #ccfbf1;
+    font-weight: 900;
+}
+
+.gst-report-table tfoot td:first-child {
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+
+.gst-empty-state {
+    min-height: 145px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #64748b;
+}
+
+.gst-empty-state i {
+    color: #0f766e;
+    font-size: 32px;
+}
+
+.gst-empty-state strong {
+    color: #0f172a;
+}
+
+.gst-sheet-footer {
+    margin-top: 11px;
+    padding-top: 7px;
+    border-top: 1px solid #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    color: #64748b;
+    font-size: 10px;
+}
+
+.gst-share-status {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1200;
+    max-width: 390px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    color: #fff;
+    background: #0f766e;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .25);
+    font-weight: 750;
+}
+
+.gst-share-status.is-error {
+    background: #b91c1c;
+}
+
+@media (max-width: 980px) {
+    .gst-report-hero,
+    .gst-filter-panel {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .gst-report-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 650px) {
+    .gst-report-hero h1 { font-size: 28px; }
+    .gst-report-actions,
+    .gst-action,
+    .gst-filter-form,
+    .gst-filter-field,
+    .gst-filter-submit,
+    .gst-download-link { width: 100%; }
+    .gst-a4-sheet { padding: 18px 14px; }
+}
+
+@page {
+    size: A4 landscape;
+    margin: 10mm;
+}
+
+@media print {
+    body { background: #fff !important; }
+    .no-print,
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar { display: none !important; }
+    .main-wrapper { margin-left: 0 !important; }
+    .content-area { padding: 0 !important; background: #fff !important; }
+    .gst-report-page { display: block; }
+    .gst-a4-sheet {
+        width: auto;
+        max-width: none;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .gst-sheet-header { break-after: avoid; page-break-after: avoid; }
+    .gst-report-table { page-break-inside: auto; }
+    .gst-report-table thead { display: table-header-group; }
+    .gst-report-table tfoot { display: table-row-group; }
+    .gst-report-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .gst-report-table th,
+    .gst-report-table td {
+        padding: 5px 5px;
+        border-color: #111827;
+        font-size: 8px;
+    }
+    .gst-sheet-header h2 { font-size: 18px; }
+    .gst-sheet-header p,
+    .gst-sheet-header small,
+    .gst-sheet-title { font-size: 9px; }
+    .gst-sheet-footer { font-size: 8px; }
+}

@@ -1,229 +1,62 @@
+{% set screens = request.state.screen_settings %}
+{% set current_role = request.session.get("role", "Admin")|lower|replace(" ", "")|replace("_", "")|replace("-", "") %}
 <div class="sidebar" id="sidebar">
-
     <div class="logo-section">
-
         <div class="company-logo">
             <div class="logo-circle">
                 {% if request.session.get("tenant_company_logo_url") %}
-                <img src="{{ request.session.get("tenant_company_logo_url") }}" alt="{{ request.session.get("tenant_company_name", "ManPro Plus") }}">
+                <img src="{{ request.session.get('tenant_company_logo_url') }}" alt="{{ request.session.get('tenant_company_name', 'ManPro Plus') }}">
                 {% else %}
                 <i class="bi bi-building-fill-gear"></i>
                 {% endif %}
             </div>
-
-            <div class="company-name">
-                <span class="company-title">{{ request.session.get("tenant_company_name", "MANPRO PLUS") }}</span>
-            </div>
-
+            <div class="company-name"><span class="company-title">{{ request.session.get("tenant_company_name", "MANPRO PLUS") }}</span></div>
         </div>
-
     </div>
 
     <ul class="menu-list">
+        <li><a href="/"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
 
-        <li>
-            <a href="/">
-                <i class="bi bi-speedometer2"></i>
-                <span>Dashboard</span>
-            </a>
-        </li>
+        {% if screens.get('purchase', true) or screens.get('sales', true) or screens.get('accounts', true) or screens.get('hr', true) %}<li class="menu-heading">Transactions</li>{% endif %}
+        {% if screens.get('purchase', true) %}<li><a href="/purchase"><i class="bi bi-cart-plus"></i><span>Purchase</span></a></li>{% endif %}
+        {% if screens.get('sales', true) %}<li><a href="/sales"><i class="bi bi-receipt"></i><span>Sales</span></a></li>{% endif %}
+        {% if screens.get('accounts', true) %}<li><a href="/accounts"><i class="bi bi-cash-coin"></i><span>Accounts</span></a></li>{% endif %}
+        {% if screens.get('hr', true) %}<li><a href="/hr"><i class="bi bi-person-badge"></i><span>HR Department</span></a></li>{% endif %}
 
-        <li class="menu-heading">
-            Transactions
-        </li>
-
-        <li>
-            <a href="/purchase">
-                <i class="bi bi-cart-plus"></i>
-                <span>Purchase</span>
-            </a>
-        </li>
-
-        <!-- <li>
-            <a href="/production">
-                <i class="bi bi-gear"></i>
-                <span>Production</span>
-            </a>
-        </li> -->
-
-        <li>
-            <a href="/sales">
-                <i class="bi bi-receipt"></i>
-                <span>Sales</span>
-            </a>
-        </li>
-
-        <li>
-            <a href="/accounts">
-                <i class="bi bi-cash-coin"></i>
-                <span>Accounts</span>
-            </a>
-        </li>
-
-        <li>
-            <a href="/hr">
-                <i class="bi bi-person-badge"></i>
-                <span>HR Department</span>
-            </a>
-        </li>
-
-        <li class="menu-heading">
-            Masters
-        </li>
-
-        {% if request.session.get("role", "Admin") == "Admin" %}
-        <li>
-            <a href="/company">
-                <i class="bi bi-building"></i>
-                <span>Company</span>
-            </a>
-        </li>
-
-        <li>
-            <a href="/users">
-                <i class="bi bi-shield-lock"></i>
-                <span>Users & Roles</span>
-            </a>
-        </li>
+        <li class="menu-heading">Masters</li>
+        {% if current_role in ["admin", "superadmin"] %}
+        <li><a href="/company"><i class="bi bi-building"></i><span>Company</span></a></li>
+        <li><a href="/users"><i class="bi bi-shield-lock"></i><span>Users & Roles</span></a></li>
         {% endif %}
+        {% if screens.get('raw_materials', true) %}<li><a href="/raw-materials"><i class="bi bi-box"></i><span>Raw Materials</span></a></li>{% endif %}
+        {% if screens.get('products', true) %}<li><a href="/products"><i class="bi bi-bag"></i><span>Products</span></a></li>{% endif %}
+        {% if screens.get('suppliers', true) %}<li><a href="/suppliers"><i class="bi bi-truck"></i><span>Suppliers</span></a></li>{% endif %}
+        {% if screens.get('customers', true) %}<li><a href="/customers"><i class="bi bi-people"></i><span>Customers</span></a></li>{% endif %}
 
-        <li>
-            <a href="/raw-materials">
-                <i class="bi bi-box"></i>
-                <span>Raw Materials</span>
-            </a>
-        </li>
+        {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) %}<li class="menu-heading">Reports</li>{% endif %}
+        {% if screens.get('purchase_reports', true) %}<li><a href="/purchase-reports"><i class="bi bi-file-earmark-bar-graph"></i><span>Purchase Reports</span></a></li>{% endif %}
+        {% if screens.get('sales_reports', true) %}<li><a href="/sales-reports"><i class="bi bi-cart-check"></i><span>Sales Report</span></a></li>{% endif %}
+        {% if screens.get('monthly_purchase_report', true) %}<li><a href="/monthly-purchase-report"><i class="bi bi-calendar3"></i><span>Monthly Purchase</span></a></li>{% endif %}
+        {% if screens.get('monthly_sales_report', true) %}<li><a href="/monthly-sales-report"><i class="bi bi-calendar2-week"></i><span>Monthly Sales</span></a></li>{% endif %}
+        {% if screens.get('stock_valuation_report', true) %}<li><a href="/stock-valuation-report"><i class="bi bi-boxes"></i><span>Stock Valuation</span></a></li>{% endif %}
+        {% if screens.get('supplier_outstanding_report', true) %}<li><a href="/supplier-outstanding-report"><i class="bi bi-wallet2"></i><span>Supplier Outstanding</span></a></li>{% endif %}
+        {% if screens.get('customer_outstanding_report', true) %}<li><a href="/customer-outstanding-report"><i class="bi bi-person-check"></i><span>Customer Outstanding</span></a></li>{% endif %}
+        {% if screens.get('purchase_bank_statement', true) %}<li><a href="/purchase-bank-statement"><i class="bi bi-bank"></i><span>Purchase Bank Statement</span></a></li>{% endif %}
+        {% if screens.get('sales_bank_statement', true) %}<li><a href="/sales-bank-statement"><i class="bi bi-bank2"></i><span>Sales Bank Statement</span></a></li>{% endif %}
+        {% if screens.get('accounts_ledger', true) %}<li><a href="/accounts-ledger"><i class="bi bi-journal-text"></i><span>Accounts Ledger</span></a></li>{% endif %}
+        {% if screens.get('expense_reports', true) %}<li><a href="/expense-reports"><i class="bi bi-graph-down-arrow"></i><span>Expense Report</span></a></li>{% endif %}
 
-        <li>
-            <a href="/products">
-                <i class="bi bi-bag"></i>
-                <span>Products</span>
-            </a>
-        </li>
+        {% if screens.get('purchase_gst_report', true) or screens.get('sales_gst_report', true) %}<li class="menu-heading">GST Reports</li>{% endif %}
+        {% if screens.get('purchase_gst_report', true) %}<li><a href="/purchase-gst-report"><i class="bi bi-receipt-cutoff"></i><span>Purchase GST Report</span></a></li>{% endif %}
+        {% if screens.get('sales_gst_report', true) %}<li><a href="/sales-gst-report"><i class="bi bi-file-earmark-spreadsheet"></i><span>Sales GST Report</span></a></li>{% endif %}
 
-        <li>
-            <a href="/suppliers">
-                <i class="bi bi-truck"></i>
-                <span>Suppliers</span>
-            </a>
-        </li>
+        {% if screens.get('ai_expense_analyzer', true) or screens.get('ai_chatbot', true) %}<li class="menu-heading">AI Tools</li>{% endif %}
+        {% if screens.get('ai_expense_analyzer', true) %}<li><a href="/ai-expense-analyzer"><i class="bi bi-stars"></i><span>AI Expense Analyzer</span></a></li>{% endif %}
+        {% if screens.get('ai_chatbot', true) %}<li><a href="/ai-chatbot"><i class="bi bi-robot"></i><span>AI Chatbot</span></a></li>{% endif %}
 
-        <li>
-            <a href="/customers">
-                <i class="bi bi-people"></i>
-                <span>Customers</span>
-            </a>
-        </li>
-
-        <!-- =======================================
-        REPORTS
-======================================== -->
-
-        <li class="menu-heading">
-            Reports
-        </li>
-
-        <li>
-            <a href="/purchase-reports">
-                <i class="bi bi-file-earmark-bar-graph"></i>
-                <span>Purchase Reports</span>
-            </a>
-        </li>
-
-        <li>
-            <a href="/sales-reports">
-                <i class="bi bi-cart-check"></i>
-                <span>Sales Report</span>
-            </a>
-        </li>
-
-        <li>
-
-            <a href="/monthly-purchase-report">
-
-                <i class="bi bi-calendar3"></i>
-
-                Monthly Purchase
-
-            </a>
-
-        </li>
-
-
-        <li>
-            <a href="/monthly-sales-report">
-                <i class="bi bi-calendar2-week"></i>
-                Monthly Sales
-            </a>
-        </li>
-
-        <li>
-            <a href="/stock-valuation-report">
-                <i class="bi bi-boxes"></i>
-                Stock Valuation
-            </a>
-        </li>
-
-        <li>
-            <a href="/supplier-outstanding-report">
-                <i class="bi bi-wallet2"></i>
-                Supplier Outstanding
-            </a>
-        </li>
-
-        <li>
-            <a href="/customer-outstanding-report">
-                <i class="bi bi-person-check"></i>
-                Customer Outstanding
-            </a>
-        </li>
-
-        <li>
-            <a href="/purchase-bank-statement">
-                <i class="bi bi-bank"></i>
-                Purchase Bank Statement
-            </a>
-        </li>
-
-        <li>
-            <a href="/sales-bank-statement">
-                <i class="bi bi-bank2"></i>
-                Sales Bank Statement
-            </a>
-        </li>
-
-        <li>
-            <a href="/accounts-ledger">
-                <i class="bi bi-journal-text"></i>
-                Accounts Ledger
-            </a>
-        </li>
-
-        <li>
-            <a href="/expense-reports">
-                <i class="bi bi-graph-down-arrow"></i>
-                Expense Report
-            </a>
-        </li>
-
-        <li class="menu-heading">
-            AI Tools
-        </li>
-
-        <li>
-            <a href="/ai-expense-analyzer">
-                <i class="bi bi-stars"></i>
-                AI Expense Analyzer
-            </a>
-        </li>
-
-        <li>
-            <a href="/ai-chatbot">
-                <i class="bi bi-robot"></i>
-                AI Chatbot
-            </a>
-        </li>
-
+        {% if current_role in ["admin", "superadmin"] %}
+        <li class="menu-heading">Administration</li>
+        <li><a href="/settings"><i class="bi bi-sliders2"></i><span>Settings</span></a></li>
+        {% endif %}
     </ul>
-
 </div>

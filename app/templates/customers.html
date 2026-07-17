@@ -89,7 +89,7 @@ Customers
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Customer</th>
+                        <th>Customer Company</th>
                         <th>Company</th>
                         <th>Mobile</th>
                         <th>GST</th>
@@ -112,11 +112,11 @@ Customers
                         <td>
                             <div class="customer-name-cell">
                                 <span class="customer-avatar">
-                                    {{ item.customer_name[:1]|upper }}
+                                    {{ (item.company_name or item.customer_name)[:1]|upper }}
                                 </span>
 
                                 <div>
-                                    <strong>{{ item.customer_name }}</strong>
+                                    <strong>{{ item.company_name or item.customer_name }}</strong>
                                     <small>{{ item.email or "Customer contact" }}</small>
                                 </div>
                             </div>
@@ -152,7 +152,7 @@ Customers
                                 <a href="/customer/delete/{{ item.id }}"
                                    class="customer-table-action customer-delete-action"
                                    data-delete-customer
-                                   data-customer-name="{{ item.customer_name }}">
+                                   data-customer-name="{{ item.company_name or item.customer_name }}">
                                     <i class="bi bi-trash3"></i>
                                     <span>Delete</span>
                                 </a>

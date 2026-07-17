@@ -56,7 +56,7 @@ Sales Report
                 <div class="col-lg-4">
 
                     <label class="form-label fw-bold">
-                        Customer
+                        Customer Company
                     </label>
 
                     <select
@@ -73,7 +73,7 @@ Sales Report
                             value="{{ customer.id }}"
                             {% if customer.id == customer_id %}selected{% endif %}>
 
-                            {{ customer.customer_name }}
+                            {{ customer.company_name or customer.customer_name }}
 
                         </option>
 
@@ -175,13 +175,16 @@ Sales Report
 
                         <th>Date</th>
 
-                        <th>Customer</th>
+                        <th>Customer Company</th>
 
                         <th class="text-end">Items</th>
 
                         <th class="text-end">Qty</th>
 
                         <th class="text-end">GST</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
 
                         <th class="text-end">Grand Total</th>
 
@@ -219,7 +222,7 @@ Sales Report
 
                         <td>
 
-                            {{ row.customer_name }}
+                            {{ row.company_name or row.customer_name }}
 
                         </td>
 
@@ -240,6 +243,10 @@ Sales Report
                             {{ "%.2f"|format(row.gst_amount or 0) }}
 
                         </td>
+
+                        <td class="text-end">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
 
                         <td class="text-end fw-bold text-success">
 

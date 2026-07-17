@@ -12,7 +12,152 @@ document.addEventListener("DOMContentLoaded", function () {
         calculateTotals();
         updateItemCount();
     }
+
+    const supplierSearch = document.getElementById("supplierSearch");
+    if (supplierSearch) {
+        initializeSupplierCombobox();
+        updateTaxMode();
+    }
 });
+
+function selectSupplierOption(option) {
+    const search = document.getElementById("supplierSearch");
+    const supplierId = document.getElementById("supplierId");
+    const optionsPanel = document.getElementById("supplierOptions");
+    const clearButton = document.getElementById("supplierClear");
+    if (!search || !supplierId || !option) return;
+    search.value = option.dataset.name;
+    search.dataset.selectedName = option.dataset.name;
+    supplierId.value = option.dataset.id;
+    supplierId.dataset.gst = option.dataset.gst || "";
+    supplierId.dataset.state = option.dataset.state || "";
+    search.setCustomValidity("");
+    if (clearButton) clearButton.hidden = false;
+    optionsPanel.hidden = true;
+    search.setAttribute("aria-expanded", "false");
+    recalculateAllRows();
+}
+
+function initializeSupplierCombobox() {
+    const search = document.getElementById("supplierSearch");
+    const supplierId = document.getElementById("supplierId");
+    const optionsPanel = document.getElementById("supplierOptions");
+    const clearButton = document.getElementById("supplierClear");
+    const options = Array.from(optionsPanel.querySelectorAll(".supplier-option"));
+    const noResults = optionsPanel.querySelector(".supplier-no-results");
+    let activeIndex = -1;
+
+    const visibleOptions = () => options.filter((option) => !option.hidden);
+    const setActive = (index) => {
+        const visible = visibleOptions();
+        options.forEach((option) => option.classList.remove("active"));
+        if (!visible.length) { activeIndex = -1; return; }
+        activeIndex = (index + visible.length) % visible.length;
+        visible[activeIndex].classList.add("active");
+        visible[activeIndex].scrollIntoView({ block: "nearest" });
+    };
+    const openOptions = () => {
+        optionsPanel.hidden = false;
+        search.setAttribute("aria-expanded", "true");
+    };
+    const filterOptions = () => {
+        const query = search.value.trim().toLowerCase();
+        const selectionChanged = search.value !== (search.dataset.selectedName || "");
+        if (selectionChanged) {
+            supplierId.value = "";
+            supplierId.dataset.gst = "";
+            supplierId.dataset.state = "";
+            delete search.dataset.selectedName;
+        }
+        if (clearButton) clearButton.hidden = !search.value;
+        options.forEach((option) => { option.hidden = !option.dataset.name.toLowerCase().includes(query); });
+        noResults.hidden = visibleOptions().length > 0;
+        activeIndex = -1;
+        search.setCustomValidity(search.value && !supplierId.value ? "Select a company from the dropdown." : "");
+        openOptions();
+        updateTaxMode();
+    };
+
+    search.addEventListener("focus", () => { filterOptions(); });
+    search.addEventListener("input", filterOptions);
+    search.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            openOptions();
+            const visible = visibleOptions();
+            const nextIndex = activeIndex < 0
+                ? (event.key === "ArrowDown" ? 0 : visible.length - 1)
+                : activeIndex + (event.key === "ArrowDown" ? 1 : -1);
+            setActive(nextIndex);
+        } else if (event.key === "Enter" && (activeIndex >= 0 || visibleOptions().length === 1)) {
+            event.preventDefault();
+            selectSupplierOption(visibleOptions()[activeIndex >= 0 ? activeIndex : 0]);
+        } else if (event.key === "Escape") {
+            optionsPanel.hidden = true;
+            search.setAttribute("aria-expanded", "false");
+        }
+    });
+    options.forEach((option) => option.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        selectSupplierOption(option);
+    }));
+    if (clearButton) clearButton.addEventListener("click", () => {
+        search.value = "";
+        delete search.dataset.selectedName;
+        supplierId.value = "";
+        supplierId.dataset.gst = "";
+        supplierId.dataset.state = "";
+        search.setCustomValidity("");
+        clearButton.hidden = true;
+        options.forEach((option) => { option.hidden = false; option.classList.remove("active"); });
+        noResults.hidden = true;
+        optionsPanel.hidden = false;
+        search.setAttribute("aria-expanded", "true");
+        recalculateAllRows();
+        search.focus();
+    });
+    search.addEventListener("blur", () => window.setTimeout(() => {
+        optionsPanel.hidden = true;
+        search.setAttribute("aria-expanded", "false");
+    }, 120));
+}
+
+function getTaxMode() {
+    const form = document.getElementById("purchaseEntryForm") || document.querySelector(".purchase-entry-form");
+    const supplier = form && form.querySelector('[name="supplier_id"]');
+    if (!form || !supplier || !supplier.value) return { known: false, intra: true, state: "" };
+    const companyGst = (form.dataset.companyGst || "").trim();
+    const partyGst = (supplier.dataset.gst || "").trim();
+    const companyCode = /^\d{2}/.test(companyGst) ? companyGst.slice(0, 2) : "";
+    const partyCode = /^\d{2}/.test(partyGst) ? partyGst.slice(0, 2) : "";
+    const normalizeState = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const companyState = normalizeState(form.dataset.companyState);
+    const partyState = normalizeState(supplier.dataset.state);
+    const intra = companyState && partyState
+        ? companyState === partyState
+        : Boolean(companyCode && partyCode && companyCode === partyCode);
+    return { known: true, intra, state: supplier.dataset.state || "" };
+}
+
+function updateTaxMode() {
+    const mode = getTaxMode();
+    const banner = document.querySelector("[data-tax-mode]");
+    if (!banner) return mode;
+    const text = banner.querySelector("span");
+    banner.classList.toggle("inter-state", mode.known && !mode.intra);
+    text.textContent = !mode.known
+        ? "Select a supplier to determine CGST/SGST or IGST."
+        : mode.intra
+            ? `Intra-State supply${mode.state ? ` (${mode.state})` : ""}: CGST + SGST applies.`
+            : `Inter-State supply${mode.state ? ` (${mode.state})` : ""}: IGST applies.`;
+    return mode;
+}
+
+function recalculateAllRows() {
+    updateTaxMode();
+    document.querySelectorAll("#purchaseBody tr").forEach((row) => calculateRow(row.querySelector('[name="qty"]'), false));
+    calculateTotals();
+}
 
 // =========================================
 // ADD ROW
@@ -26,7 +171,7 @@ function addRow() {
         <tr>
 
             <td>
-                <select name="material_id" required>
+                <select name="material_id" required onchange="fillMaterialDetails(this)">
                     <option value="">Select Material</option>
                     ${materialsOptions}
                 </select>
@@ -37,9 +182,9 @@ function addRow() {
                     type="number"
                     name="qty"
                     value=""
-                    placeholder="0.000"
-                    step="0.001"
-                    min="0.001"
+                    placeholder="0"
+                    step="1"
+                    min="1"
                     required
                     onkeyup="calculateRow(this)"
                     onchange="calculateRow(this)"
@@ -72,14 +217,9 @@ function addRow() {
                 >
             </td>
 
-            <td>
-                <input
-                    type="number"
-                    name="gst_amount"
-                    value="0"
-                    readonly
-                >
-            </td>
+            <td><input type="number" name="cgst_amount" value="0" readonly></td>
+            <td><input type="number" name="sgst_amount" value="0" readonly></td>
+            <td><input type="number" name="igst_amount" value="0" readonly><input type="hidden" name="gst_amount" value="0"></td>
 
             <td>
                 <input
@@ -106,6 +246,21 @@ function addRow() {
 
     tbody.insertAdjacentHTML("beforeend", row);
     updateItemCount();
+}
+
+function fillMaterialDetails(materialSelect) {
+    const row = materialSelect.closest("tr");
+    const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+    if (!row || !selectedOption || !selectedOption.value) return;
+
+    const quantityInput = row.querySelector('[name="qty"]');
+    const rateInput = row.querySelector('[name="rate"]');
+    const gstInput = row.querySelector('[name="gst_percent"]');
+
+    if (!(Number(quantityInput.value) > 0)) quantityInput.value = "1";
+    rateInput.value = Number(selectedOption.dataset.price || 0).toFixed(2);
+    gstInput.value = Number(selectedOption.dataset.gst || 0).toFixed(2);
+    calculateRow(materialSelect);
 }
 
 // =========================================
@@ -154,12 +309,21 @@ function calculateRow(input, updateTotals = true){
     let gstAmount =
         amount * gstPercent / 100;
 
+    const taxMode = getTaxMode();
+    const cgstAmount = taxMode.intra ? Number((gstAmount / 2).toFixed(2)) : 0;
+    const sgstAmount = taxMode.intra ? Number((gstAmount - cgstAmount).toFixed(2)) : 0;
+    const igstAmount = taxMode.intra ? 0 : Number(gstAmount.toFixed(2));
+
     let lineTotal =
         amount + gstAmount;
 
     row.querySelector(
         '[name="gst_amount"]'
     ).value = gstAmount.toFixed(2);
+
+    row.querySelector('[name="cgst_amount"]').value = cgstAmount.toFixed(2);
+    row.querySelector('[name="sgst_amount"]').value = sgstAmount.toFixed(2);
+    row.querySelector('[name="igst_amount"]').value = igstAmount.toFixed(2);
 
     row.querySelector(
         '[name="line_total"]'
@@ -176,6 +340,9 @@ function calculateTotals(){
 
     let subTotal = 0;
     let gstTotal = 0;
+    let cgstTotal = 0;
+    let sgstTotal = 0;
+    let igstTotal = 0;
     let grandTotal = 0;
 
     document
@@ -206,6 +373,9 @@ function calculateTotals(){
 
             subTotal += qty * rate;
             gstTotal += gst;
+            cgstTotal += parseFloat(row.querySelector('[name="cgst_amount"]').value) || 0;
+            sgstTotal += parseFloat(row.querySelector('[name="sgst_amount"]').value) || 0;
+            igstTotal += parseFloat(row.querySelector('[name="igst_amount"]').value) || 0;
             grandTotal += total;
         });
 
@@ -214,6 +384,10 @@ function calculateTotals(){
 
     document.getElementById("gstTotal").innerHTML =
         "\u20B9 " + gstTotal.toFixed(2);
+
+    document.getElementById("cgstTotal").innerHTML = "\u20B9 " + cgstTotal.toFixed(2);
+    document.getElementById("sgstTotal").innerHTML = "\u20B9 " + sgstTotal.toFixed(2);
+    document.getElementById("igstTotal").innerHTML = "\u20B9 " + igstTotal.toFixed(2);
 
     document.getElementById("grandTotal").innerHTML =
         "\u20B9 " + grandTotal.toFixed(2);
@@ -322,17 +496,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const matchSupplier = (text) => {
         const normalizedInvoice = normalizeText(text);
-        const supplierSelect = form.querySelector('[name="supplier_id"]');
+        const supplierSearch = document.getElementById("supplierSearch");
+        const supplierId = form.querySelector('[name="supplier_id"]');
         let bestMatch = null;
-        supplierSelect.querySelectorAll("option[data-name]").forEach((option) => {
+        document.querySelectorAll("#supplierOptions .supplier-option[data-name]").forEach((option) => {
             const normalizedName = normalizeText(option.dataset.name);
             if (normalizedName.length >= 3 && normalizedInvoice.includes(normalizedName)) {
                 if (!bestMatch || normalizedName.length > bestMatch.nameLength) {
-                    bestMatch = { value: option.value, nameLength: normalizedName.length };
+                    bestMatch = { option, nameLength: normalizedName.length };
                 }
             }
         });
-        if (bestMatch) supplierSelect.value = bestMatch.value;
+        if (bestMatch) {
+            selectSupplierOption(bestMatch.option);
+        }
         return Boolean(bestMatch);
     };
 
@@ -412,7 +589,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const invoiceDate = parseDate(text);
         const materialMatches = matchMaterials(text);
 
-        if (invoiceNumber) form.querySelector('[name="invoice_no"]').value = invoiceNumber;
         if (invoiceDate) form.querySelector('[name="invoice_date"]').value = invoiceDate;
         fillMaterialRows(materialMatches);
 
@@ -493,7 +669,7 @@ document.addEventListener("DOMContentLoaded", function () {
     cameraInput.addEventListener("change", () => processInvoice(cameraInput.files[0], cameraInput));
 
     reviewButton.addEventListener("click", () => {
-        form.querySelector('[name="supplier_id"]').scrollIntoView({ behavior: "smooth", block: "center" });
+        document.getElementById("supplierSearch").scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
     saveButton.addEventListener("click", () => {

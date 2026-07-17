@@ -27,8 +27,8 @@
     <section class="reminder-filter-panel">
         <form method="get" action="/payment-reminders" class="reminder-filter-form">
             <div class="reminder-field search-field">
-                <label>Search Customer</label>
-                <div><i class="bi bi-search"></i><input type="search" name="search" value="{{ search }}" placeholder="Name, company, mobile or email"></div>
+                <label>Search Customer Company</label>
+                <div><i class="bi bi-search"></i><input type="search" name="search" value="{{ search }}" placeholder="Company, mobile or email"></div>
             </div>
             <div class="reminder-field">
                 <label>Ageing Bucket</label>
@@ -56,13 +56,13 @@
         <div class="reminder-table-wrap">
             <table class="reminder-table">
                 <thead><tr>
-                    <th>Customer</th><th>Contact</th><th>Estimated Due</th><th>Ageing</th><th>Outstanding</th><th>Last Follow-up</th><th>Next Follow-up</th><th>Reminder Options</th>
+                    <th>Customer Company</th><th>Contact</th><th>Estimated Due</th><th>Ageing</th><th>Outstanding</th><th>Last Follow-up</th><th>Next Follow-up</th><th>Reminder Options</th>
                 </tr></thead>
                 <tbody>
                     {% for row in customers %}
                     <tr>
                         <td>
-                            <div class="reminder-customer"><span><i class="bi bi-building"></i></span><div><strong>{{ row.customer_name }}</strong><small>{{ row.company_name or row.sale_count ~ ' sales invoices' }}</small></div></div>
+                            <div class="reminder-customer"><span><i class="bi bi-building"></i></span><div><strong>{{ row.company_name or row.customer_name }}</strong><small>{{ row.sale_count }} sales invoices</small></div></div>
                             <span class="priority-badge {{ row.priority }}">{{ row.priority_label }} Priority</span>
                         </td>
                         <td><div class="contact-lines"><span><i class="bi bi-phone"></i>{{ row.mobile or 'Mobile missing' }}</span><span><i class="bi bi-envelope"></i>{{ row.email or 'Email missing' }}</span></div></td>
@@ -73,9 +73,9 @@
                         <td>{% if row.last_reminder and row.last_reminder.next_followup_date %}<strong>{{ row.last_reminder.next_followup_date.strftime('%d %b %Y') }}</strong>{% else %}<span class="table-muted">Not scheduled</span>{% endif %}</td>
                         <td>
                             <div class="reminder-actions">
-                                <button type="button" class="channel-button whatsapp" data-reminder-open data-channel="WhatsApp" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-whatsapp"></i> WhatsApp</button>
-                                <button type="button" class="channel-button sms" data-reminder-open data-channel="SMS" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-chat-dots"></i> SMS</button>
-                                <button type="button" class="channel-button email" data-reminder-open data-channel="Email" data-customer-id="{{ row.id }}" data-customer="{{ row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.email %}disabled title="Add customer email first"{% endif %}><i class="bi bi-envelope"></i></button>
+                                <button type="button" class="channel-button whatsapp" data-reminder-open data-channel="WhatsApp" data-customer-id="{{ row.id }}" data-customer="{{ row.company_name or row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-whatsapp"></i> WhatsApp</button>
+                                <button type="button" class="channel-button sms" data-reminder-open data-channel="SMS" data-customer-id="{{ row.id }}" data-customer="{{ row.company_name or row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.mobile %}disabled title="Add customer mobile number first"{% endif %}><i class="bi bi-chat-dots"></i> SMS</button>
+                                <button type="button" class="channel-button email" data-reminder-open data-channel="Email" data-customer-id="{{ row.id }}" data-customer="{{ row.company_name or row.customer_name }}" data-mobile="{{ row.mobile or '' }}" data-email="{{ row.email or '' }}" data-balance="{{ '%.2f'|format(row.balance_amount) }}" {% if not row.email %}disabled title="Add customer email first"{% endif %}><i class="bi bi-envelope"></i></button>
                             </div>
                         </td>
                     </tr>

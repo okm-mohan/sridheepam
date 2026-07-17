@@ -129,7 +129,7 @@ Sales
                     <tr>
                         <th>Invoice No</th>
                         <th>Date</th>
-                        <th>Customer</th>
+                        <th>Customer Company</th>
                         <th>Grand Total</th>
                         <th>Actions</th>
                     </tr>
@@ -152,9 +152,9 @@ Sales
                         <td>
                             <div class="sales-customer-cell">
                                 <span class="sales-customer-avatar">
-                                    {{ row.customer_name[:1]|upper if row.customer_name else "C" }}
+                                    {{ row.company_name[:1]|upper if row.company_name else "C" }}
                                 </span>
-                                <strong>{{ row.customer_name or "Walk-in Customer" }}</strong>
+                                <strong>{{ row.company_name or "Company name not set" }}</strong>
                             </div>
                         </td>
 

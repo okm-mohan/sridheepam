@@ -90,7 +90,7 @@ Monthly Purchase Report
 
                     <label class="form-label fw-bold">
 
-                        Supplier
+                        Supplier Company
 
                     </label>
 
@@ -110,7 +110,7 @@ Monthly Purchase Report
                             value="{{ supplier.id }}"
                             {% if supplier.id == supplier_id %}selected{% endif %}>
 
-                            {{ supplier.supplier_name }}
+                            {{ supplier.company_name or supplier.supplier_name }}
 
                         </option>
 
@@ -259,6 +259,10 @@ Monthly Purchase Report
 
                         </th>
 
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
+
                         <th class="text-end">
 
                             Purchase Amount
@@ -313,6 +317,10 @@ Monthly Purchase Report
 
                         </td>
 
+                        <td class="text-end">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
+
                         <td class="text-end fw-bold text-success">
 
                             {{ "%.2f"|format(row.purchase_amount or 0) }}
@@ -352,6 +360,10 @@ Monthly Purchase Report
                             {{ "%.2f"|format(total_gst or 0) }}
 
                         </td>
+
+                        <td class="text-end">{{ "%.2f"|format(total_cgst or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_sgst or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_igst or 0) }}</td>
 
                         <td class="text-end">
 

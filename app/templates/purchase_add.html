@@ -21,7 +21,8 @@
         </a>
     </section>
 
-    <form method="post" action="/purchase/save" class="purchase-entry-form" id="purchaseEntryForm" enctype="multipart/form-data">
+    <form method="post" action="/purchase/save" class="purchase-entry-form" id="purchaseEntryForm" enctype="multipart/form-data"
+          data-company-state="{{ company.state or '' }}" data-company-gst="{{ company.gst_number or '' }}">
         <input type="hidden" name="ocr_text" id="ocrText">
         <input type="hidden" name="ocr_confidence" id="ocrConfidence" value="0">
         <input type="hidden" name="entry_source" id="entrySource" value="Manual">
@@ -66,7 +67,7 @@
             </div>
         </section>
 
-        <section class="purchase-entry-panel">
+        <section class="purchase-entry-panel supplier-details-panel">
 
             <div class="purchase-panel-header">
                 <div>
@@ -77,28 +78,15 @@
 
             <div class="form-grid">
 
-                <div>
-                    <label>Purchase No</label>
-                    <div class="purchase-form-shell">
+                <div class="invoice-number-field">
+                    <label>Invoice No</label>
+                    <div class="purchase-form-shell invoice-number-shell">
                         <i class="bi bi-hash"></i>
                     <input
                         type="text"
-                        name="purchase_no"
-                        value="{{ purchase_no }}"
+                        name="invoice_no"
+                        value="{{ invoice_no }}"
                         readonly
-                    >
-                    </div>
-                </div>
-
-                <div>
-                    <label>Purchase Date</label>
-                    <div class="purchase-form-shell">
-                        <i class="bi bi-calendar3"></i>
-                    <input
-                        type="date"
-                        name="purchase_date"
-                        value="{{ today }}"
-                        required
                     >
                     </div>
                 </div>
@@ -106,50 +94,46 @@
                 <div>
                     <label>Supplier</label>
 
-                    <div class="purchase-form-shell">
+                    <div class="purchase-form-shell supplier-combobox" id="supplierCombobox">
                         <i class="bi bi-truck"></i>
-                    <select
-                        name="supplier_id"
-                        required
-                    >
-                        <option value="">
-                            Select Supplier
-                        </option>
-
+                    <input type="text" id="supplierSearch" placeholder="Type company name"
+                           autocomplete="off" role="combobox" aria-autocomplete="list"
+                           aria-controls="supplierOptions" aria-expanded="false" required>
+                    <button type="button" class="supplier-clear" id="supplierClear"
+                            aria-label="Clear selected supplier" title="Clear supplier" hidden>
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                    <input type="hidden" name="supplier_id" id="supplierId">
+                    <div id="supplierOptions" class="supplier-options" role="listbox" hidden>
                         {% for s in suppliers %}
-                        <option value="{{ s.id }}" data-name="{{ s.supplier_name }}">
-                            {{ s.supplier_name }}
-                        </option>
+                        <button type="button" class="supplier-option" role="option"
+                                data-id="{{ s.id }}" data-name="{{ s.company_name }}"
+                                data-state="{{ s.state or '' }}" data-gst="{{ s.gst_number or '' }}">
+                            {{ s.company_name }}
+                        </button>
                         {% endfor %}
-
-                    </select>
+                        <div class="supplier-no-results" hidden>No matching company</div>
+                    </div>
                     </div>
 
-                </div>
-
-                <div>
-                    <label>Invoice No</label>
-                    <div class="purchase-form-shell">
-                        <i class="bi bi-receipt"></i>
-                    <input
-                        type="text"
-                        name="invoice_no"
-                    >
-                    </div>
                 </div>
 
                 <div>
                     <label>Invoice Date</label>
-                    <div class="purchase-form-shell">
+                    <div class="purchase-form-shell invoice-date-shell">
                         <i class="bi bi-calendar2-check"></i>
                     <input
                         type="date"
                         name="invoice_date"
+                        value="{{ today }}"
+                        required
                     >
                     </div>
                 </div>
 
             </div>
+
+            <div class="gst-tax-mode" data-tax-mode><i class="bi bi-geo-alt"></i><span>Select a supplier to determine CGST/SGST or IGST.</span></div>
 
         </section>
 
@@ -184,7 +168,9 @@
                         <th>Qty</th>
                         <th>Rate</th>
                         <th>GST %</th>
-                        <th>GST Amt</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
                         <th>Total</th>
                         <th class="action-column"><span class="visually-hidden">Action</span></th>
                     </tr>
@@ -215,10 +201,10 @@
                     <strong id="subTotal">&#8377; 0.00</strong>
                 </div>
 
-                <div class="total-row">
-                    <span>GST Total</span>
-                    <strong id="gstTotal">&#8377; 0.00</strong>
-                </div>
+                <div class="total-row"><span>CGST Total</span><strong id="cgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>SGST Total</span><strong id="sgstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>IGST Total</span><strong id="igstTotal">&#8377; 0.00</strong></div>
+                <div class="total-row"><span>GST Total</span><strong id="gstTotal">&#8377; 0.00</strong></div>
 
                 <div class="total-row grand">
                     <span>Grand Total</span>

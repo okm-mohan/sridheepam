@@ -85,7 +85,7 @@ Monthly Sales Report
                 <div class="col-lg-4">
 
                     <label class="form-label fw-bold">
-                        Customer
+                        Customer Company
                     </label>
 
                     <select
@@ -104,7 +104,7 @@ Monthly Sales Report
                             value="{{ customer.id }}"
                             {% if customer.id == customer_id %}selected{% endif %}>
 
-                            {{ customer.customer_name }}
+                            {{ customer.company_name or customer.customer_name }}
 
                         </option>
 
@@ -232,6 +232,9 @@ Monthly Sales Report
                         <th class="text-end">Quantity</th>
 
                         <th class="text-end">GST Amount</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
 
                         <th class="text-end">Sales Amount</th>
 
@@ -279,6 +282,10 @@ Monthly Sales Report
 
                         </td>
 
+                        <td class="text-end">{{ "%.2f"|format(row.cgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.sgst_amount or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(row.igst_amount or 0) }}</td>
+
                         <td class="text-end fw-bold text-success">
 
                             {{ "%.2f"|format(row.sale_amount or 0) }}
@@ -318,6 +325,10 @@ Monthly Sales Report
                             {{ "%.2f"|format(total_gst or 0) }}
 
                         </td>
+
+                        <td class="text-end">{{ "%.2f"|format(total_cgst or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_sgst or 0) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_igst or 0) }}</td>
 
                         <td class="text-end">
 

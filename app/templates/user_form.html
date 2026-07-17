@@ -79,6 +79,9 @@
                         <select name="role">
                             <option value="Admin" {% if current_role == "Admin" %}selected{% endif %}>Admin</option>
                             <option value="User" {% if current_role == "User" %}selected{% endif %}>User</option>
+                            {% if request.session.get("role", "")|lower|replace(" ", "")|replace("_", "")|replace("-", "") == "superadmin" %}
+                            <option value="SuperAdmin" {% if current_role|lower|replace(" ", "")|replace("_", "")|replace("-", "") == "superadmin" %}selected{% endif %}>Super Admin</option>
+                            {% endif %}
                         </select>
                     </div>
                 </div>

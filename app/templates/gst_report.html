@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ report_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/gst_report.css">
+{% endblock %}
+
+{% block content %}
+<div class="gst-report-page" data-pdf-url="{{ pdf_url }}" data-report-type="{{ report_type }}">
+    <section class="gst-report-hero no-print">
+        <div>
+            <span class="gst-report-kicker">GST Compliance</span>
+            <h1>{{ report_title }}</h1>
+            <p>Review monthly taxable value and CGST, SGST and IGST amounts invoice by invoice.</p>
+        </div>
+        <div class="gst-report-actions">
+            <a class="gst-action gst-action-preview"
+               href="{{ pdf_url }}?month={{ month }}&year={{ year }}"
+               target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span>PDF Preview</span>
+            </a>
+            <button class="gst-action gst-action-share" id="gstSharePdf" type="button">
+                <i class="bi bi-share"></i>
+                <span>Share PDF</span>
+            </button>
+            <button class="gst-action gst-action-print" type="button" onclick="window.print()">
+                <i class="bi bi-printer"></i>
+                <span>Print</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="gst-filter-panel no-print">
+        <form method="get" action="{{ report_url }}" class="gst-filter-form">
+            <div class="gst-filter-field">
+                <label for="gstMonth">Month</label>
+                <div class="gst-filter-input">
+                    <i class="bi bi-calendar-month"></i>
+                    <select id="gstMonth" name="month">
+                        {% for item in months %}
+                        <option value="{{ item.id }}" {% if item.id == month %}selected{% endif %}>{{ item.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="gst-filter-field">
+                <label for="gstYear">Year</label>
+                <div class="gst-filter-input">
+                    <i class="bi bi-calendar3"></i>
+                    <select id="gstYear" name="year">
+                        {% for item in years %}
+                        <option value="{{ item }}" {% if item == year %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button class="gst-filter-submit" type="submit">
+                <i class="bi bi-search"></i>
+                <span>View Report</span>
+            </button>
+        </form>
+        <a class="gst-download-link" href="{{ pdf_url }}?month={{ month }}&year={{ year }}&download=1">
+            <i class="bi bi-download"></i> Download PDF
+        </a>
+    </section>
+
+    <section class="gst-a4-sheet">
+        <header class="gst-sheet-header">
+            <h2>{{ company.company_name if company else "Company Name" }}</h2>
+            <p>
+                {% if company %}
+                    {{ company.address or "" }}
+                    {% if company.city %}, {{ company.city }}{% endif %}
+                    {% if company.state %}, {{ company.state }}{% endif %}
+                    {% if company.pincode %} - {{ company.pincode }}{% endif %}
+                {% else %}
+                    Company address not configured
+                {% endif %}
+            </p>
+            <small>GSTIN: {{ company.gst_number if company and company.gst_number else "Not configured" }}</small>
+            <div class="gst-sheet-title">
+                <strong>{{ report_title }}</strong>
+                <span>{{ month_name }} {{ year }}</span>
+            </div>
+        </header>
+
+        <div class="gst-table-wrap">
+            <table class="gst-report-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>{{ party_label }}</th>
+                        <th>GST No</th>
+                        <th>Inv No</th>
+                        <th>Basic</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
+                        <th>Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report %}
+                    <tr>
+                        <td class="gst-date">{{ row.report_date.strftime('%d-%m-%Y') if row.report_date else "-" }}</td>
+                        <td>{{ row.party_name or "-" }}</td>
+                        <td class="gst-code">{{ row.gst_number or "-" }}</td>
+                        <td>{{ row.invoice_no or "-" }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(row.basic) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(row.cgst) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(row.sgst) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(row.igst) }}</td>
+                        <td class="gst-number gst-grand">{{ "%.2f"|format(row.grand_total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="gst-empty-state">
+                                <i class="bi bi-receipt"></i>
+                                <strong>No GST transactions found</strong>
+                                <span>There are no {{ report_type }} invoices for {{ month_name }} {{ year }}.</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4">Total</td>
+                        <td class="gst-number">{{ "%.2f"|format(summary.basic) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(summary.cgst) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(summary.sgst) }}</td>
+                        <td class="gst-number">{{ "%.2f"|format(summary.igst) }}</td>
+                        <td class="gst-number gst-grand">{{ "%.2f"|format(summary.grand_total) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <footer class="gst-sheet-footer">
+            <span>Generated from ManPro Plus ERP</span>
+            <span>{{ report_title }} - {{ month_name }} {{ year }}</span>
+        </footer>
+    </section>
+
+    <div class="gst-share-status no-print" id="gstShareStatus" role="status" aria-live="polite" hidden></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/gst_report.js"></script>
+{% endblock %}
