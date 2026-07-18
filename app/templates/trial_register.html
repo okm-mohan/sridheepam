@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Your 15-Day Trial | ManPro Plus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/trial.css">
+</head>
+<body>
+<header class="trial-header">
+    <a class="trial-brand" href="/company-enter"><span><i class="fa-solid fa-industry"></i></span><div><strong>ManPro</strong><small>Plus ERP</small></div></a>
+    <a href="/company-enter"><i class="fa-solid fa-arrow-left"></i> Back to website</a>
+</header>
+
+<main class="trial-layout">
+    <section class="trial-message">
+        <span class="trial-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> 15-day free trial</span>
+        <h1>Let’s set up your manufacturing workspace.</h1>
+        <p>Tell us about your business. Your company code will be reserved immediately, and our onboarding team will prepare your secure ERP workspace.</p>
+        <div class="trial-points">
+            <div><i class="fa-solid fa-credit-card"></i><span><strong>No payment required</strong><small>Explore the selected plan before subscribing.</small></span></div>
+            <div><i class="fa-solid fa-database"></i><span><strong>Private company data</strong><small>Your production data stays inside your workspace.</small></span></div>
+            <div><i class="fa-solid fa-headset"></i><span><strong>Guided onboarding</strong><small>We help configure your company and opening data.</small></span></div>
+        </div>
+        <div class="selected-plan"><small>Selected trial package</small><strong>{{ selected_plan }}</strong><span>15 days · No credit card</span></div>
+    </section>
+
+    <section class="trial-card">
+        <div class="form-heading"><span>Trial registration</span><h2>Create your account</h2><p>Fields marked with * are required.</p></div>
+        {% if error %}<div class="trial-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ error }}</span></div>{% endif %}
+        <form method="post" action="/trial/register" class="trial-form">
+            <div class="field full"><label for="companyName">Company Name *</label><div class="input-shell"><i class="fa-regular fa-building"></i><input id="companyName" name="company_name" value="{{ values.get('company_name', '') }}" placeholder="Registered or trading name" maxlength="180" required autofocus></div></div>
+            <div class="field"><label for="contactName">Contact Person *</label><div class="input-shell"><i class="fa-regular fa-user"></i><input id="contactName" name="contact_name" value="{{ values.get('contact_name', '') }}" placeholder="Your full name" maxlength="120" required></div></div>
+            <div class="field"><label for="mobile">Mobile Number *</label><div class="input-shell prefix"><span>+91</span><input id="mobile" name="mobile" value="{{ values.get('mobile', '') }}" inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10" placeholder="9876543210" required></div></div>
+            <div class="field full"><label for="email">Business Email *</label><div class="input-shell"><i class="fa-regular fa-envelope"></i><input id="email" name="email" type="email" value="{{ values.get('email', '') }}" placeholder="name@company.com" maxlength="180" required></div></div>
+            <div class="field"><label for="state">State *</label><div class="input-shell"><i class="fa-solid fa-location-dot"></i><select id="state" name="state" required><option value="">Select state</option>{% for state in ['Tamil Nadu','Kerala','Karnataka','Andhra Pradesh','Telangana','Maharashtra','Gujarat','Delhi','Uttar Pradesh','West Bengal','Rajasthan','Madhya Pradesh','Odisha','Punjab','Haryana','Bihar','Jharkhand','Chhattisgarh','Assam','Other'] %}<option value="{{ state }}" {% if values.get('state') == state %}selected{% endif %}>{{ state }}</option>{% endfor %}</select></div></div>
+            <div class="field"><label for="industry">Industry Type *</label><div class="input-shell"><i class="fa-solid fa-gears"></i><select id="industry" name="industry_type" required><option value="">Select industry</option>{% for industry in ['HDPE / PP Woven Packaging','Plastic & Polymer Manufacturing','Engineering & Fabrication','Textile Manufacturing','Food Manufacturing','Chemical Manufacturing','Automotive Components','General Manufacturing','Other'] %}<option value="{{ industry }}" {% if values.get('industry_type') == industry %}selected{% endif %}>{{ industry }}</option>{% endfor %}</select></div></div>
+            <div class="field"><label for="users">Expected Users *</label><div class="input-shell"><i class="fa-solid fa-users"></i><input id="users" name="expected_users" type="number" min="1" max="500" value="{{ values.get('expected_users', '1') }}" required></div></div>
+            <div class="field"><label for="plan">Trial Package *</label><div class="input-shell"><i class="fa-regular fa-star"></i><select id="plan" name="plan_name" required>{% for plan in ['Starter','Business','Professional'] %}<option value="{{ plan }}" {% if selected_plan == plan %}selected{% endif %}>{{ plan }}</option>{% endfor %}</select></div></div>
+            <div class="field"><label for="password">Create Password *</label><div class="input-shell"><i class="fa-solid fa-lock"></i><input id="password" name="password" type="password" minlength="8" placeholder="Minimum 8 characters" required></div></div>
+            <div class="field"><label for="confirmPassword">Confirm Password *</label><div class="input-shell"><i class="fa-solid fa-shield-halved"></i><input id="confirmPassword" name="confirm_password" type="password" minlength="8" placeholder="Re-enter password" required></div></div>
+            <label class="terms full"><input type="checkbox" name="accepted_terms" value="yes" required><span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>, and consent to being contacted about my ManPro trial.</span></label>
+            <button class="trial-submit full" type="submit"><span>Reserve My 15-Day Trial</span><i class="fa-solid fa-arrow-right"></i></button>
+            <p class="secure-note full"><i class="fa-solid fa-lock"></i> Your password is encrypted before it is stored.</p>
+        </form>
+    </section>
+</main>
+</body>
+</html>

@@ -82,6 +82,7 @@ Users & Roles
                                 <div>
                                     <strong>{{ item.full_name or item.username }}</strong>
                                     <small>{{ item.username }}</small>
+                                    {% if item.email %}<small>{{ item.email }}</small>{% endif %}
                                 </div>
                             </div>
                         </td>

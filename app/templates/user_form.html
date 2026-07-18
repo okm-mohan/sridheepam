@@ -61,6 +61,14 @@
                 </div>
 
                 <div class="user-form-field">
+                    <label>Recovery Email</label>
+                    <div class="user-input-shell">
+                        <i class="bi bi-envelope"></i>
+                        <input type="email" name="email" value="{{ user.email if user and user.email else '' }}" placeholder="Required for email OTP reset">
+                    </div>
+                </div>
+
+                <div class="user-form-field">
                     <label>{% if user %}New Password{% else %}Password{% endif %}</label>
                     <div class="user-input-shell">
                         <i class="bi bi-key"></i>

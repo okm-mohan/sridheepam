@@ -12,12 +12,16 @@ from app.database import (
 )
 from fastapi import Form
 from fastapi.responses import RedirectResponse
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import calendar
 import os
 import uuid
 import json
 import re
+import hashlib
+import secrets
+import smtplib
+from email.message import EmailMessage
 try:
     from openai import AsyncOpenAI
 except ImportError:
@@ -26,6 +30,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi import Form
 from typing import List
+from urllib.parse import quote
 from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import RedirectResponse
@@ -58,14 +63,16 @@ class TenantDatabaseMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         public_paths = (
             "/company-enter",
+            "/trial/",
             "/login",
             "/switch-company",
             "/static/",
             "/favicon.ico",
         )
+        is_public_path = any(path == item or path.startswith(item) for item in public_paths)
         tenant_database_url = request.session.get("tenant_database_url")
 
-        if not tenant_database_url and not any(path == item or path.startswith(item) for item in public_paths):
+        if not tenant_database_url and not is_public_path:
             return RedirectResponse("/company-enter", status_code=303)
 
         if tenant_database_url:
@@ -73,7 +80,7 @@ class TenantDatabaseMiddleware(BaseHTTPMiddleware):
 
         try:
             request.state.screen_settings = {key: True for key in SCREEN_DEFINITIONS}
-            if tenant_database_url and request.session.get("user") and not path.startswith("/static/"):
+            if tenant_database_url and request.session.get("user") and not is_public_path:
                 settings_db = SessionLocal()
                 try:
                     company_settings = load_company_settings(settings_db)
@@ -90,8 +97,34 @@ class TenantDatabaseMiddleware(BaseHTTPMiddleware):
                 reset_tenant_database_url(token)
 
 
+class RememberMeCookieMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        session_data = request.scope.get("session") or {}
+        if not session_data.get("remember_me"):
+            return response
+
+        updated_headers = []
+        for header_name, header_value in response.raw_headers:
+            if header_name.lower() == b"set-cookie" and header_value.lower().startswith(b"session="):
+                cookie_text = header_value.decode("latin-1")
+                if "max-age=" not in cookie_text.lower():
+                    cookie_text += "; Max-Age=2592000"
+                header_value = cookie_text.encode("latin-1")
+            updated_headers.append((header_name, header_value))
+        response.raw_headers = updated_headers
+        return response
+
+
 app.add_middleware(TenantDatabaseMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "ManProPlusERP2026@SecretKey"))
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "ManProPlusERP2026@SecretKey"),
+    max_age=None,
+    same_site="lax",
+    https_only=os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true" or bool(os.getenv("RENDER")),
+)
+app.add_middleware(RememberMeCookieMiddleware)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -109,6 +142,96 @@ def verify_password(plain_password, hashed_password):
 
 def hash_password(password):
     return pwd_context.hash(password)
+
+
+def password_matches(plain_password, stored_password):
+    stored_password = str(stored_password or "")
+    if stored_password.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            return pwd_context.verify(plain_password, stored_password)
+        except Exception:
+            return False
+    return stored_password == plain_password
+
+
+def ensure_password_recovery_schema(db):
+    columns = {
+        row[0]
+        for row in db.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema=DATABASE() AND table_name='users'
+        """)).all()
+    }
+    if "email" not in columns:
+        db.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(180) NULL AFTER full_name"))
+
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS password_reset_otps (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            request_token VARCHAR(80) NOT NULL UNIQUE,
+            user_id INT NOT NULL,
+            email VARCHAR(180) NOT NULL,
+            otp_hash VARCHAR(64) NOT NULL,
+            attempts INT NOT NULL DEFAULT 0,
+            expires_at DATETIME NOT NULL,
+            verified_at DATETIME NULL,
+            used_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_reset_user (user_id),
+            INDEX idx_reset_email_created (email, created_at)
+        )
+    """))
+    db.commit()
+
+
+def password_reset_otp_hash(request_token, otp):
+    secret = os.getenv("SESSION_SECRET_KEY", "ManProPlusERP2026@SecretKey")
+    return hashlib.sha256(f"{request_token}:{otp}:{secret}".encode("utf-8")).hexdigest()
+
+
+def send_password_reset_email(recipient, company_name, otp):
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
+    smtp_user = os.getenv("SMTP_USER", "").strip()
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user).strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+    if not smtp_host or not from_email:
+        raise RuntimeError("Email delivery is not configured.")
+
+    message = EmailMessage()
+    message["Subject"] = "Your ManPro password reset OTP"
+    message["From"] = from_email
+    message["To"] = recipient
+    message.set_content(
+        f"Your ManPro password reset OTP is {otp}. "
+        "It expires in 10 minutes. Do not share this code with anyone."
+    )
+    message.add_alternative(f"""
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:28px;color:#172033">
+            <h2 style="margin:0 0 8px">ManPro Plus</h2>
+            <p style="color:#667085">Password reset for {company_name}</p>
+            <p>Use this one-time password to continue:</p>
+            <div style="font-size:30px;font-weight:700;letter-spacing:8px;background:#f0efff;color:#5048c8;padding:18px;text-align:center;border-radius:10px">{otp}</div>
+            <p style="font-size:13px;color:#667085">This OTP expires in 10 minutes. If you did not request it, you can safely ignore this email.</p>
+        </div>
+    """, subtype="html")
+
+    use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+    if use_ssl:
+        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+    else:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+        server.ehlo()
+        if os.getenv("SMTP_USE_TLS", "true").lower() == "true":
+            server.starttls()
+            server.ehlo()
+    try:
+        if smtp_user:
+            server.login(smtp_user, smtp_password)
+        server.send_message(message)
+    finally:
+        server.quit()
 
 templates = Jinja2Templates(env=env)
 
@@ -760,6 +883,305 @@ async def company_enter(
     return RedirectResponse("/login", status_code=303)
 
 
+@app.get("/trial/register")
+async def trial_register_page(request: Request, plan: str = "Business"):
+    allowed_plans = {"Starter", "Business", "Professional"}
+    selected_plan = plan if plan in allowed_plans else "Business"
+    return templates.TemplateResponse(
+        request=request,
+        name="trial_register.html",
+        context={
+            "request": request,
+            "error": "",
+            "selected_plan": selected_plan,
+            "values": {},
+        },
+    )
+
+
+@app.post("/trial/register")
+async def trial_register(request: Request):
+    form = await request.form()
+    values = {
+        "company_name": str(form.get("company_name") or "").strip(),
+        "contact_name": str(form.get("contact_name") or "").strip(),
+        "mobile": re.sub(r"\D", "", str(form.get("mobile") or "")),
+        "email": str(form.get("email") or "").strip().lower(),
+        "state": str(form.get("state") or "").strip(),
+        "industry_type": str(form.get("industry_type") or "").strip(),
+        "expected_users": str(form.get("expected_users") or "1").strip(),
+        "plan_name": str(form.get("plan_name") or "Business").strip(),
+    }
+    password = str(form.get("password") or "")
+    confirm_password = str(form.get("confirm_password") or "")
+    accepted_terms = form.get("accepted_terms") == "yes"
+    allowed_plans = {"Starter", "Business", "Professional"}
+
+    error = ""
+    if not all(values[key] for key in ("company_name", "contact_name", "mobile", "email", "state", "industry_type")):
+        error = "Please complete all required company and contact details."
+    elif len(values["mobile"]) != 10 or values["mobile"][0] not in "6789":
+        error = "Enter a valid 10-digit Indian mobile number."
+    elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", values["email"]):
+        error = "Enter a valid business email address."
+    elif values["plan_name"] not in allowed_plans:
+        error = "Select a valid trial package."
+    elif len(password) < 8 or not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        error = "Password must contain at least 8 characters, including a letter and number."
+    elif password != confirm_password:
+        error = "Password and confirmation do not match."
+    elif not accepted_terms:
+        error = "Accept the Terms of Service and Privacy Policy to continue."
+
+    try:
+        expected_users = max(1, min(int(values["expected_users"]), 500))
+    except (TypeError, ValueError):
+        expected_users = 1
+        error = error or "Enter a valid expected number of users."
+
+    if error:
+        return templates.TemplateResponse(
+            request=request,
+            name="trial_register.html",
+            context={
+                "request": request,
+                "error": error,
+                "selected_plan": values["plan_name"] if values["plan_name"] in allowed_plans else "Business",
+                "values": values,
+            },
+            status_code=400,
+        )
+
+    db = MasterSessionLocal()
+    try:
+        ensure_trial_requests_table(db)
+        duplicate = db.execute(text("""
+            SELECT id FROM saas_trial_requests
+            WHERE email=:email OR mobile=:mobile
+            LIMIT 1
+        """), {"email": values["email"], "mobile": values["mobile"]}).first()
+
+        if duplicate:
+            raise ValueError("A trial request already exists for this email address or mobile number.")
+
+        company_code = generate_trial_company_code(db, values["company_name"])
+        db.execute(text("""
+            INSERT INTO saas_trial_requests (
+                company_code, company_name, contact_name, mobile, email,
+                state, industry_type, expected_users, plan_name,
+                password_hash, trial_days, status
+            ) VALUES (
+                :company_code, :company_name, :contact_name, :mobile, :email,
+                :state, :industry_type, :expected_users, :plan_name,
+                :password_hash, 15, 'Pending Provisioning'
+            )
+        """), {
+            **values,
+            "company_code": company_code,
+            "expected_users": expected_users,
+            "password_hash": pwd_context.hash(password),
+        })
+        db.commit()
+    except ValueError as validation_error:
+        db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="trial_register.html",
+            context={
+                "request": request,
+                "error": str(validation_error),
+                "selected_plan": values["plan_name"],
+                "values": values,
+            },
+            status_code=409,
+        )
+    except Exception:
+        db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="trial_register.html",
+            context={
+                "request": request,
+                "error": "Trial registration is temporarily unavailable. Please try again shortly or contact ManPro support.",
+                "selected_plan": values["plan_name"],
+                "values": values,
+            },
+            status_code=503,
+        )
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="trial_success.html",
+        context={
+            "request": request,
+            "company_code": company_code,
+            "company_name": values["company_name"],
+            "contact_name": values["contact_name"],
+            "email": values["email"],
+            "plan_name": values["plan_name"],
+        },
+    )
+
+
+@app.get("/trial-admin")
+async def trial_admin(request: Request, status: str = "all"):
+    if not is_superadmin_user(request):
+        return RedirectResponse("/dashboard", status_code=303)
+
+    db = MasterSessionLocal()
+    try:
+        ensure_trial_requests_table(db)
+        ensure_saas_subscription_columns(db)
+        normalized_status = status.strip()
+        rows = db.execute(text("""
+            SELECT * FROM saas_trial_requests
+            WHERE (:status = 'all' OR status=:status)
+            ORDER BY created_at DESC, id DESC
+        """), {"status": normalized_status}).mappings().all()
+        counts = {
+            row["status"]: row["total"]
+            for row in db.execute(text("""
+                SELECT status, COUNT(*) AS total
+                FROM saas_trial_requests
+                GROUP BY status
+            """)).mappings().all()
+        }
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="trial_admin.html",
+        context={
+            "request": request,
+            "requests": [dict(row) for row in rows],
+            "counts": counts,
+            "status_filter": normalized_status,
+            "message": request.query_params.get("message", ""),
+            "error": request.query_params.get("error", ""),
+            "template_database": os.getenv("TENANT_TEMPLATE_DATABASE", "sridheepam"),
+        },
+    )
+
+
+@app.post("/trial-admin/{request_id}/approve")
+async def trial_admin_approve(
+    request: Request,
+    request_id: int,
+    database_name: str = Form(""),
+):
+    if not is_superadmin_user(request):
+        return RedirectResponse("/dashboard", status_code=303)
+
+    db = MasterSessionLocal()
+    try:
+        ensure_trial_requests_table(db)
+        ensure_saas_subscription_columns(db)
+        trial = db.execute(text("""
+            SELECT * FROM saas_trial_requests WHERE id=:request_id LIMIT 1
+        """), {"request_id": request_id}).mappings().first()
+        if not trial:
+            raise ValueError("Trial request was not found.")
+        trial = dict(trial)
+        if trial["status"] != "Pending Provisioning":
+            raise ValueError(f"This trial is already marked as {trial['status']}.")
+
+        company_exists = db.execute(text("""
+            SELECT id FROM saas_companies WHERE company_code=:company_code LIMIT 1
+        """), {"company_code": trial["company_code"]}).first()
+        if company_exists:
+            raise ValueError("This company code is already active.")
+
+        provisioned_database = provision_trial_workspace(db, trial, database_name)
+        trial_start = date.today()
+        trial_end = trial_start + timedelta(days=int(trial.get("trial_days") or 15))
+        database_host = os.getenv("TENANT_DB_HOST", "localhost")
+        database_port = os.getenv("TENANT_DB_PORT", "3306")
+        database_user = os.getenv("TENANT_DB_USER", "root")
+        database_password = os.getenv("TENANT_DB_PASSWORD", "")
+        database_url = build_mysql_url(
+            provisioned_database,
+            user=database_user,
+            password=database_password,
+            host=database_host,
+            port=database_port,
+        )
+
+        db.execute(text("""
+            INSERT INTO saas_companies (
+                company_code, company_name, tagline, plan_name,
+                database_name, database_url, database_host, database_port,
+                database_user, database_password, status, subscription_status,
+                trial_start, trial_end, contact_name, mobile, email
+            ) VALUES (
+                :company_code, :company_name, :tagline, :plan_name,
+                :database_name, :database_url, :database_host, :database_port,
+                :database_user, :database_password, 'Active', 'Active Trial',
+                :trial_start, :trial_end, :contact_name, :mobile, :email
+            )
+        """), {
+            **trial,
+            "tagline": "Smart Manufacturing Management with ManPro Plus",
+            "database_name": provisioned_database,
+            "database_url": database_url,
+            "database_host": database_host,
+            "database_port": database_port,
+            "database_user": database_user,
+            "database_password": database_password,
+            "trial_start": trial_start,
+            "trial_end": trial_end,
+        })
+        db.execute(text("""
+            UPDATE saas_trial_requests
+            SET status='Active Trial', trial_start=:trial_start, trial_end=:trial_end
+            WHERE id=:request_id
+        """), {"request_id": request_id, "trial_start": trial_start, "trial_end": trial_end})
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        db.close()
+        safe_error = re.sub(r"[^A-Za-z0-9 _.,:'()-]", "", str(error))[:220]
+        return RedirectResponse(f"/trial-admin?error={quote(safe_error)}", status_code=303)
+    finally:
+        if db.is_active:
+            db.close()
+
+    success_message = f"Trial activated for {trial['company_code']}. Login username is admin."
+    return RedirectResponse(
+        f"/trial-admin?message={quote(success_message)}",
+        status_code=303,
+    )
+
+
+@app.post("/trial-admin/{request_id}/reject")
+async def trial_admin_reject(request: Request, request_id: int):
+    if not is_superadmin_user(request):
+        return RedirectResponse("/dashboard", status_code=303)
+
+    db = MasterSessionLocal()
+    try:
+        result = db.execute(text("""
+            UPDATE saas_trial_requests
+            SET status='Rejected'
+            WHERE id=:request_id AND status='Pending Provisioning'
+        """), {"request_id": request_id})
+        db.commit()
+        if not result.rowcount:
+            raise ValueError("Only pending requests can be rejected.")
+    except Exception as error:
+        db.rollback()
+        db.close()
+        safe_error = re.sub(r"[^A-Za-z0-9 _.,:'()-]", "", str(error))[:220]
+        return RedirectResponse(f"/trial-admin?error={quote(safe_error)}", status_code=303)
+    finally:
+        if db.is_active:
+            db.close()
+
+    return RedirectResponse("/trial-admin?message=Trial request rejected.", status_code=303)
+
+
 @app.get("/switch-company")
 async def switch_company(request: Request):
     request.session.clear()
@@ -1115,6 +1537,7 @@ def save_material(
 def delete_material(material_id: int):
 
     db = SessionLocal()
+    ensure_password_recovery_schema(db)
 
     db.execute(
         text("""
@@ -3963,6 +4386,159 @@ def render_gst_report(request, report_type, month=0, year=0):
     finally:
         db.close()
 
+
+def ensure_trial_requests_table(db):
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS saas_trial_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_code VARCHAR(30) NOT NULL UNIQUE,
+            company_name VARCHAR(180) NOT NULL,
+            contact_name VARCHAR(120) NOT NULL,
+            mobile VARCHAR(20) NOT NULL,
+            email VARCHAR(180) NOT NULL,
+            state VARCHAR(80) NOT NULL,
+            industry_type VARCHAR(120) NOT NULL,
+            expected_users INT NOT NULL DEFAULT 1,
+            plan_name VARCHAR(50) NOT NULL DEFAULT 'Business',
+            password_hash VARCHAR(255) NOT NULL,
+            trial_days INT NOT NULL DEFAULT 15,
+            trial_start DATE NULL,
+            trial_end DATE NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'Pending Provisioning',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_trial_email (email),
+            INDEX idx_trial_mobile (mobile),
+            INDEX idx_trial_status (status)
+        )
+    """))
+    db.commit()
+
+
+def generate_trial_company_code(db, company_name):
+    base = re.sub(r"[^A-Z0-9]", "", (company_name or "").upper())[:8] or "MANPRO"
+
+    for _ in range(20):
+        suffix = uuid.uuid4().hex[:4].upper()
+        company_code = f"{base}{suffix}"
+        exists = db.execute(text("""
+            SELECT company_code FROM saas_companies WHERE company_code=:company_code
+            UNION ALL
+            SELECT company_code FROM saas_trial_requests WHERE company_code=:company_code
+            LIMIT 1
+        """), {"company_code": company_code}).first()
+        if not exists:
+            return company_code
+
+    return f"MANPRO{uuid.uuid4().hex[:8].upper()}"
+
+
+def ensure_saas_subscription_columns(db):
+    existing = {
+        row[0]
+        for row in db.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema=DATABASE() AND table_name='saas_companies'
+        """)).all()
+    }
+    additions = {
+        "subscription_status": "VARCHAR(40) NULL DEFAULT 'Active'",
+        "trial_start": "DATE NULL",
+        "trial_end": "DATE NULL",
+        "contact_name": "VARCHAR(120) NULL",
+        "mobile": "VARCHAR(20) NULL",
+        "email": "VARCHAR(180) NULL",
+    }
+    for column, definition in additions.items():
+        if column not in existing:
+            db.execute(text(f"ALTER TABLE saas_companies ADD COLUMN `{column}` {definition}"))
+    db.commit()
+
+
+def provision_trial_workspace(master_db, trial_request, requested_database_name=""):
+    template_database = os.getenv("TENANT_TEMPLATE_DATABASE", "sridheepam").strip()
+    generated_name = f"manpro_{trial_request['company_code'].lower()}"
+    database_name = (requested_database_name or generated_name).strip().lower()
+
+    if not re.fullmatch(r"[a-z0-9_]{3,64}", database_name):
+        raise ValueError("Database name may contain only lowercase letters, numbers and underscores.")
+    if not re.fullmatch(r"[A-Za-z0-9_]{1,64}", template_database):
+        raise ValueError("Tenant template database configuration is invalid.")
+
+    template_exists = master_db.execute(text("""
+        SELECT schema_name FROM information_schema.schemata WHERE schema_name=:schema_name
+    """), {"schema_name": template_database}).first()
+    if not template_exists:
+        raise ValueError(f"Tenant template database '{template_database}' was not found.")
+
+    target_exists = master_db.execute(text("""
+        SELECT schema_name FROM information_schema.schemata WHERE schema_name=:schema_name
+    """), {"schema_name": database_name}).first()
+    if target_exists:
+        target_tables = master_db.execute(text("""
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema=:schema_name AND table_type='BASE TABLE'
+        """), {"schema_name": database_name}).scalar() or 0
+        if target_tables:
+            raise ValueError(f"Database '{database_name}' already exists and is not empty.")
+
+    created_database = not bool(target_exists)
+    if created_database:
+        master_db.execute(text(f"CREATE DATABASE `{database_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+
+    try:
+        table_names = [
+            row[0] for row in master_db.execute(text("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema=:schema_name AND table_type='BASE TABLE'
+                ORDER BY table_name
+            """), {"schema_name": template_database}).all()
+        ]
+        if not table_names:
+            raise ValueError("Tenant template database contains no tables.")
+
+        for table_name in table_names:
+            if not re.fullmatch(r"[A-Za-z0-9_]+", table_name):
+                raise ValueError("Tenant template contains an unsupported table name.")
+            master_db.execute(text(
+                f"CREATE TABLE `{database_name}`.`{table_name}` LIKE `{template_database}`.`{table_name}`"
+            ))
+
+        for settings_table in ("gst_settings",):
+            if settings_table in table_names:
+                master_db.execute(text(
+                    f"INSERT INTO `{database_name}`.`{settings_table}` SELECT * FROM `{template_database}`.`{settings_table}`"
+                ))
+
+        user_columns = {
+            row[0] for row in master_db.execute(text(f"SHOW COLUMNS FROM `{database_name}`.`users`" )).all()
+        }
+        if "email" not in user_columns:
+            master_db.execute(text(
+                f"ALTER TABLE `{database_name}`.`users` ADD COLUMN email VARCHAR(180) NULL AFTER full_name"
+            ))
+
+        master_db.execute(text(f"""
+            INSERT INTO `{database_name}`.`company`
+                (company_name, state, phone, email)
+            VALUES (:company_name, :state, :mobile, :email)
+        """), dict(trial_request))
+        master_db.execute(text(f"""
+            INSERT INTO `{database_name}`.`users`
+                (username, password, full_name, email, role, is_active, status)
+            VALUES ('admin', :password_hash, :contact_name, :email, 'Admin', 1, 'Active')
+        """), dict(trial_request))
+        master_db.commit()
+    except Exception:
+        master_db.rollback()
+        if created_database:
+            master_db.execute(text(f"DROP DATABASE `{database_name}`"))
+            master_db.commit()
+        raise
+
+    return database_name
+
     return templates.TemplateResponse(
         request=request,
         name="gst_report.html",
@@ -6473,6 +7049,7 @@ def users_page(request: Request):
         return blocked
 
     db = SessionLocal()
+    ensure_password_recovery_schema(db)
 
     users = db.execute(text("""
         SELECT *
@@ -6512,6 +7089,7 @@ def user_save(
     username: str = Form(...),
     password: str = Form(...),
     full_name: str = Form(""),
+    email: str = Form(""),
     role: str = Form("User"),
     status: str = Form("Active"),
 ):
@@ -6532,6 +7110,7 @@ def user_save(
                 username,
                 password,
                 full_name,
+                email,
                 role,
                 status
             )
@@ -6540,14 +7119,16 @@ def user_save(
                 :username,
                 :password,
                 :full_name,
+                :email,
                 :role,
                 :status
             )
         """),
         {
             "username": username,
-            "password": password,
+            "password": pwd_context.hash(password),
             "full_name": full_name,
+            "email": email.strip().lower(),
             "role": role,
             "status": status,
         },
@@ -6597,6 +7178,7 @@ def user_update(
     username: str = Form(...),
     password: str = Form(""),
     full_name: str = Form(""),
+    email: str = Form(""),
     role: str = Form("User"),
     status: str = Form("Active"),
 ):
@@ -6606,6 +7188,8 @@ def user_update(
         return blocked
 
     db = SessionLocal()
+    ensure_password_recovery_schema(db)
+    ensure_password_recovery_schema(db)
 
     existing_user = db.execute(
         text("SELECT role FROM users WHERE id=:user_id"),
@@ -6627,6 +7211,7 @@ def user_update(
             SET
                 username=:username,
                 full_name=:full_name,
+                email=:email,
                 role=:role,
                 status=:status
                 {password_sql}
@@ -6635,8 +7220,9 @@ def user_update(
         {
             "user_id": user_id,
             "username": username,
-            "password": password,
+            "password": pwd_context.hash(password) if password else "",
             "full_name": full_name,
+            "email": email.strip().lower(),
             "role": role,
             "status": status,
         },
@@ -7586,6 +8172,247 @@ def salary_receipt(request: Request, employee_id: int = 0, month: int = 0, year:
     )
 
 
+def password_reset_context(request, step="request", error="", message="", token="", email_hint=""):
+    return {
+        "request": request,
+        "step": step,
+        "error": error,
+        "message": message,
+        "token": token,
+        "email_hint": email_hint,
+        "tenant": selected_company_context(request),
+    }
+
+
+@app.get("/forgot-password")
+async def forgot_password_page(request: Request):
+    blocked = require_company_selection(request)
+    if blocked:
+        return blocked
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot_password.html",
+        context=password_reset_context(request),
+    )
+
+
+@app.post("/forgot-password/request")
+async def forgot_password_request(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+):
+    blocked = require_company_selection(request)
+    if blocked:
+        return blocked
+
+    normalized_username = username.strip()
+    normalized_email = email.strip().lower()
+    db = SessionLocal()
+    try:
+        ensure_password_recovery_schema(db)
+        user = db.execute(text("""
+            SELECT id, username, email FROM users
+            WHERE username=:username AND LOWER(COALESCE(email,''))=:email
+            AND status='Active'
+            LIMIT 1
+        """), {"username": normalized_username, "email": normalized_email}).mappings().first()
+
+        if not user:
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context=password_reset_context(
+                    request,
+                    message="If the username and email match an active account, an OTP will be sent shortly.",
+                ),
+            )
+
+        recent_requests = db.execute(text("""
+            SELECT COUNT(*) FROM password_reset_otps
+            WHERE email=:email AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+        """), {"email": normalized_email}).scalar() or 0
+        if recent_requests >= 3:
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context=password_reset_context(
+                    request,
+                    error="Too many OTP requests. Please wait 15 minutes before trying again.",
+                ),
+                status_code=429,
+            )
+
+        request_token = secrets.token_urlsafe(32)
+        otp = f"{secrets.randbelow(1000000):06d}"
+        db.execute(text("""
+            INSERT INTO password_reset_otps
+                (request_token, user_id, email, otp_hash, expires_at)
+            VALUES
+                (:request_token, :user_id, :email, :otp_hash, DATE_ADD(NOW(), INTERVAL 10 MINUTE))
+        """), {
+            "request_token": request_token,
+            "user_id": user["id"],
+            "email": normalized_email,
+            "otp_hash": password_reset_otp_hash(request_token, otp),
+        })
+        db.commit()
+
+        try:
+            send_password_reset_email(
+                normalized_email,
+                request.session.get("tenant_company_name", "your company"),
+                otp,
+            )
+        except Exception:
+            db.execute(text("DELETE FROM password_reset_otps WHERE request_token=:token"), {"token": request_token})
+            db.commit()
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context=password_reset_context(
+                    request,
+                    error="Email delivery is temporarily unavailable. Please contact your ManPro administrator.",
+                ),
+                status_code=503,
+            )
+
+        local, _, domain = normalized_email.partition("@")
+        email_hint = f"{local[:2]}{'*' * max(2, len(local) - 2)}@{domain}"
+        return templates.TemplateResponse(
+            request=request,
+            name="forgot_password.html",
+            context=password_reset_context(
+                request,
+                step="otp",
+                message="A 6-digit OTP has been sent to your registered email.",
+                token=request_token,
+                email_hint=email_hint,
+            ),
+        )
+    finally:
+        db.close()
+
+
+@app.post("/forgot-password/verify")
+async def forgot_password_verify(
+    request: Request,
+    token: str = Form(...),
+    otp: str = Form(...),
+):
+    blocked = require_company_selection(request)
+    if blocked:
+        return blocked
+
+    normalized_otp = re.sub(r"\D", "", otp)
+    db = SessionLocal()
+    try:
+        reset_request = db.execute(text("""
+            SELECT * FROM password_reset_otps
+            WHERE request_token=:token AND used_at IS NULL
+            LIMIT 1
+        """), {"token": token}).mappings().first()
+        valid = bool(
+            reset_request
+            and reset_request["expires_at"] >= datetime.now()
+            and int(reset_request["attempts"] or 0) < 5
+            and secrets.compare_digest(
+                reset_request["otp_hash"],
+                password_reset_otp_hash(token, normalized_otp),
+            )
+        )
+        if not valid:
+            if reset_request:
+                db.execute(text("""
+                    UPDATE password_reset_otps SET attempts=attempts+1 WHERE request_token=:token
+                """), {"token": token})
+                db.commit()
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context=password_reset_context(
+                    request,
+                    step="otp",
+                    token=token,
+                    error="The OTP is incorrect or expired. Request a new OTP if needed.",
+                ),
+                status_code=400,
+            )
+
+        db.execute(text("""
+            UPDATE password_reset_otps SET verified_at=NOW() WHERE request_token=:token
+        """), {"token": token})
+        db.commit()
+        return templates.TemplateResponse(
+            request=request,
+            name="forgot_password.html",
+            context=password_reset_context(request, step="reset", token=token),
+        )
+    finally:
+        db.close()
+
+
+@app.post("/forgot-password/reset")
+async def forgot_password_reset(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    blocked = require_company_selection(request)
+    if blocked:
+        return blocked
+
+    error = ""
+    if len(password) < 8 or not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        error = "Password must contain at least 8 characters, including a letter and number."
+    elif password != confirm_password:
+        error = "Password and confirmation do not match."
+
+    if error:
+        return templates.TemplateResponse(
+            request=request,
+            name="forgot_password.html",
+            context=password_reset_context(request, step="reset", token=token, error=error),
+            status_code=400,
+        )
+
+    db = SessionLocal()
+    try:
+        reset_request = db.execute(text("""
+            SELECT * FROM password_reset_otps
+            WHERE request_token=:token AND verified_at IS NOT NULL
+            AND used_at IS NULL AND expires_at >= NOW()
+            LIMIT 1
+        """), {"token": token}).mappings().first()
+        if not reset_request:
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context=password_reset_context(request, error="This reset session is invalid or expired."),
+                status_code=400,
+            )
+
+        db.execute(text("UPDATE users SET password=:password WHERE id=:user_id"), {
+            "password": pwd_context.hash(password),
+            "user_id": reset_request["user_id"],
+        })
+        db.execute(text("UPDATE password_reset_otps SET used_at=NOW() WHERE request_token=:token"), {"token": token})
+        db.commit()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot_password.html",
+        context=password_reset_context(
+            request,
+            step="complete",
+            message="Your password has been reset successfully. You can now log in.",
+        ),
+    )
+
+
 @app.get("/login")
 async def login_page(request: Request):
     blocked = require_company_selection(request)
@@ -7606,7 +8433,8 @@ async def login_page(request: Request):
 async def login(
     request: Request,
     username: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
+    remember: str = Form(""),
 ):
     blocked = require_company_selection(request)
     if blocked:
@@ -7620,12 +8448,9 @@ async def login(
                 SELECT *
                 FROM users
                 WHERE username=:username
-                AND password=:password
+                LIMIT 1
             """),
-            {
-                "username": username,
-                "password": password
-            }
+            {"username": username},
         ).mappings().first()
     except Exception as error:
         db.close()
@@ -7642,7 +8467,7 @@ async def login(
 
     db.close()
 
-    if user:
+    if user and password_matches(password, user.get("password")):
         user_data = dict(user)
 
         if user_data.get("status", "Active") != "Active":
@@ -7660,6 +8485,7 @@ async def login(
         request.session["full_name"] = user_data.get("full_name") or user_data.get("username", username)
         request.session["role"] = user_data.get("role", "Admin")
         request.session["plan_name"] = request.session.get("tenant_plan_name", "")
+        request.session["remember_me"] = remember == "yes"
 
         return RedirectResponse("/dashboard", status_code=303)
 

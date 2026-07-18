@@ -3,99 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ManPro Plus - Company Access</title>
-    <link rel="stylesheet" href="/static/css/login.css">
+    <meta name="description" content="ManPro Plus is a cloud manufacturing ERP for purchase, sales, inventory, GST, accounts, HR and business reporting.">
+    <title>ManPro Plus | Manufacturing ERP for Growing Businesses</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/company_entry.css">
 </head>
 <body>
+<header class="site-header">
+    <a class="brand" href="#home" aria-label="ManPro Plus home">
+        <span class="brand-mark"><i class="fa-solid fa-industry"></i></span>
+        <span><strong>ManPro</strong><small>Plus ERP</small></span>
+    </a>
+    <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#modules">Modules</a>
+        <a href="#updates">Updates</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#contact">Contact</a>
+    </nav>
+    <a class="header-login" href="#company-access"><i class="fa-regular fa-building"></i> Customer Login</a>
+</header>
 
-<div class="tenant-entry-page">
-
-    <section class="tenant-entry-hero">
-        <div class="tenant-brand-mark">
-            <i class="fa-solid fa-industry"></i>
-        </div>
-
-        <span class="tenant-kicker">ManPro Plus SaaS</span>
-        <h1>The Complete AI-Powered Manufacturing ERP</h1>
-        <p>
-            Enter your company code to open your dedicated ERP workspace, company branding, users and private database.
-        </p>
-
-        <div class="tenant-feature-grid">
-            <div>
-                <i class="fa-solid fa-database"></i>
-                <strong>Separate Database</strong>
-                <span>Every company works inside its own ERP data space.</span>
+<main>
+    <section class="hero" id="home">
+        <div class="hero-copy">
+            <span class="eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Built for Indian manufacturers</span>
+            <h1>Run your entire factory from <em>one smart ERP.</em></h1>
+            <p>Bring purchase, sales, stock, GST, accounts, production and workforce management together—without complicated software or scattered spreadsheets.</p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="#pricing">Start 15-Day Free Trial <i class="fa-solid fa-arrow-right"></i></a>
+                <a class="btn btn-secondary" href="#company-access"><i class="fa-regular fa-circle-play"></i> Open My Company</a>
             </div>
-
-            <div>
-                <i class="fa-solid fa-chart-line"></i>
-                <strong>Plan Based Dashboard</strong>
-                <span>Dashboard and features can be aligned to package limits.</span>
-            </div>
-
-            <div>
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <strong>AI Ready</strong>
-                <span>Expense analyzer and ERP chatbot for smarter decisions.</span>
+            <div class="hero-trust">
+                <span><i class="fa-solid fa-check"></i> No credit card for trial</span>
+                <span><i class="fa-solid fa-check"></i> Guided onboarding</span>
+                <span><i class="fa-solid fa-check"></i> Secure company workspace</span>
             </div>
         </div>
-    </section>
-
-    <section class="tenant-entry-panel">
-        <div class="tenant-entry-card">
-            <span class="tenant-card-label">Company Access</span>
-            <h2>Open Your Workspace</h2>
-            <p>Use the company code provided for your organization.</p>
-
-            {% if error %}
-            <div class="login-error">
-                {{ error }}
-            </div>
-            {% endif %}
-
-            <form action="/company-enter" method="post">
-                <div class="input-group">
-                    <label>Company Code</label>
-                    <div class="input-box">
-                        <i class="fa-solid fa-building-user"></i>
-                        <input type="text"
-                               name="company_code"
-                               placeholder="Example: MANPRO"
-                               autocomplete="off"
-                               required
-                               autofocus>
+        <div class="hero-visual" aria-label="ERP overview preview">
+            <div class="visual-glow"></div>
+            <div class="erp-window">
+                <div class="window-top"><span></span><span></span><span></span><strong>Business Overview</strong></div>
+                <div class="window-body">
+                    <aside>
+                        <b><i class="fa-solid fa-cubes-stacked"></i></b>
+                        <i class="fa-solid fa-house active"></i><i class="fa-solid fa-cart-shopping"></i>
+                        <i class="fa-solid fa-file-invoice"></i><i class="fa-solid fa-boxes-stacked"></i>
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </aside>
+                    <div class="dashboard-preview">
+                        <div class="preview-title"><span>Good morning</span><strong>Your factory at a glance</strong></div>
+                        <div class="preview-cards">
+                            <div><i class="fa-solid fa-indian-rupee-sign blue"></i><span>Sales</span><strong>₹8.42L</strong><small>+12.5% this month</small></div>
+                            <div><i class="fa-solid fa-box green"></i><span>Stock Value</span><strong>₹5.18L</strong><small>1,248 items</small></div>
+                            <div><i class="fa-solid fa-wallet orange"></i><span>Receivable</span><strong>₹1.26L</strong><small>8 payments due</small></div>
+                        </div>
+                        <div class="preview-chart">
+                            <div><span>Business performance</span><strong>Sales &amp; Purchase</strong></div>
+                            <svg viewBox="0 0 560 160" role="img" aria-label="Upward business performance chart">
+                                <defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#645cff" stop-opacity=".35"/><stop offset="1" stop-color="#645cff" stop-opacity="0"/></linearGradient></defs>
+                                <path class="area" d="M0,145 C60,125 78,135 125,95 S205,120 250,72 S340,95 385,50 S470,66 560,18 L560,160 L0,160Z"/>
+                                <path class="line" d="M0,145 C60,125 78,135 125,95 S205,120 250,72 S340,95 385,50 S470,66 560,18"/>
+                            </svg>
+                        </div>
                     </div>
                 </div>
-
-                <button type="submit" class="login-btn">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                    Continue
-                </button>
-            </form>
-        </div>
-
-        <div class="tenant-info-grid">
-            <div class="tenant-info-box">
-                <span>Offers</span>
-                {% for item in offers %}
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.message }}</p>
-                {% endfor %}
             </div>
-
-            <div class="tenant-info-box">
-                <span>Updates</span>
-                {% for item in updates %}
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.message }}</p>
-                {% endfor %}
-            </div>
+            <div class="floating-stat stat-one"><i class="fa-solid fa-arrow-trend-up"></i><span><small>Growth</small><strong>+24.8%</strong></span></div>
+            <div class="floating-stat stat-two"><i class="fa-solid fa-circle-check"></i><span><small>Today</small><strong>All updated</strong></span></div>
         </div>
     </section>
 
-</div>
+    <section class="proof-strip">
+        <span>One platform for</span>
+        <strong><i class="fa-solid fa-cart-flatbed"></i> Purchase</strong>
+        <strong><i class="fa-solid fa-receipt"></i> Sales &amp; GST</strong>
+        <strong><i class="fa-solid fa-warehouse"></i> Inventory</strong>
+        <strong><i class="fa-solid fa-calculator"></i> Accounts</strong>
+        <strong><i class="fa-solid fa-users-gear"></i> HR &amp; Payroll</strong>
+    </section>
 
+    <section class="section features" id="features">
+        <div class="section-heading">
+            <span class="eyebrow">Why ManPro Plus</span>
+            <h2>Less manual work. Better decisions. Faster growth.</h2>
+            <p>Purpose-built workflows give owners and teams a live view of daily operations.</p>
+        </div>
+        <div class="feature-grid">
+            <article><span class="feature-icon violet"><i class="fa-solid fa-layer-group"></i></span><h3>Everything connected</h3><p>A purchase updates stock, accounts, GST and supplier outstanding automatically.</p></article>
+            <article><span class="feature-icon cyan"><i class="fa-solid fa-chart-line"></i></span><h3>Live business insights</h3><p>Track sales, cash flow, stock alerts and outstanding amounts from one dashboard.</p></article>
+            <article><span class="feature-icon green"><i class="fa-solid fa-shield-halved"></i></span><h3>Secure company data</h3><p>Each business receives its own workspace, users, permissions and private data environment.</p></article>
+            <article><span class="feature-icon orange"><i class="fa-solid fa-wand-magic-sparkles"></i></span><h3>AI-assisted work</h3><p>Capture invoice details, analyse expenses and ask questions about your business.</p></article>
+        </div>
+    </section>
+
+    <section class="section modules-section" id="modules">
+        <div class="section-heading light">
+            <span class="eyebrow">Complete operations suite</span>
+            <h2>Every essential module in one place</h2>
+        </div>
+        <div class="module-grid">
+            <article><i class="fa-solid fa-cart-shopping"></i><div><h3>Purchase Management</h3><p>Supplier invoices, item-wise GST, payments and purchase reporting.</p></div></article>
+            <article><i class="fa-solid fa-file-invoice-dollar"></i><div><h3>Sales &amp; Invoicing</h3><p>Professional invoices, customer outstanding, collections and reports.</p></div></article>
+            <article><i class="fa-solid fa-boxes-stacked"></i><div><h3>Inventory Control</h3><p>Raw materials, finished products, opening stock and low-stock alerts.</p></div></article>
+            <article><i class="fa-solid fa-industry"></i><div><h3>Production</h3><p>Plan manufacturing, material consumption and finished-goods movement.</p></div></article>
+            <article><i class="fa-solid fa-scale-balanced"></i><div><h3>Accounts &amp; GST</h3><p>Ledger movement, bank statements, expenses and tax-ready reports.</p></div></article>
+            <article><i class="fa-solid fa-user-group"></i><div><h3>HR &amp; Payroll</h3><p>Employees, attendance, salary, advances and workforce reporting.</p></div></article>
+        </div>
+    </section>
+
+    <section class="section updates-section" id="updates">
+        <div class="section-heading row-heading">
+            <div><span class="eyebrow">What’s new</span><h2>Latest from ManPro</h2></div>
+            <span class="live-badge"><i></i> Product updates</span>
+        </div>
+        <div class="updates-grid">
+            {% for item in updates %}
+            <article class="update-card">
+                <span class="update-icon"><i class="fa-solid fa-bolt"></i></span>
+                <small>Latest update</small><h3>{{ item.title }}</h3><p>{{ item.message }}</p>
+            </article>
+            {% endfor %}
+            {% for item in offers %}
+            <article class="update-card offer-card">
+                <span class="update-icon"><i class="fa-solid fa-gift"></i></span>
+                <small>Special offer</small><h3>{{ item.title }}</h3><p>{{ item.message }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="section pricing-section" id="pricing">
+        <div class="section-heading">
+            <span class="eyebrow">Simple pricing</span>
+            <h2>Choose a plan that grows with you</h2>
+            <p>Every plan includes secure cloud access, updates and guided onboarding.</p>
+        </div>
+        <div class="pricing-grid">
+            <article class="price-card">
+                <span class="plan-name">Starter</span><p>For a small team moving beyond spreadsheets.</p>
+                <div class="price"><sup>₹</sup><strong>2,999</strong><span>/ month</span></div>
+                <ul><li><i class="fa-solid fa-check"></i> Up to 3 users</li><li><i class="fa-solid fa-check"></i> Purchase, sales and stock</li><li><i class="fa-solid fa-check"></i> GST reports</li><li><i class="fa-solid fa-check"></i> Cloud backup</li></ul>
+                <a class="btn btn-outline" href="/trial/register?plan=Starter" data-plan="Starter">Start 15-Day Trial</a>
+            </article>
+            <article class="price-card featured-price">
+                <span class="popular">Most popular</span><span class="plan-name">Business</span><p>For growing manufacturers needing full control.</p>
+                <div class="price"><sup>₹</sup><strong>5,999</strong><span>/ month</span></div>
+                <ul><li><i class="fa-solid fa-check"></i> Up to 10 users</li><li><i class="fa-solid fa-check"></i> All Starter features</li><li><i class="fa-solid fa-check"></i> Accounts and HR</li><li><i class="fa-solid fa-check"></i> Advanced reports</li><li><i class="fa-solid fa-check"></i> Priority support</li></ul>
+                <a class="btn btn-primary" href="/trial/register?plan=Business" data-plan="Business">Try Business Free</a>
+            </article>
+            <article class="price-card">
+                <span class="plan-name">Professional</span><p>For established teams with advanced operations.</p>
+                <div class="price"><sup>₹</sup><strong>9,999</strong><span>/ month</span></div>
+                <ul><li><i class="fa-solid fa-check"></i> Expanded user access</li><li><i class="fa-solid fa-check"></i> All Business features</li><li><i class="fa-solid fa-check"></i> Production workflows</li><li><i class="fa-solid fa-check"></i> AI tools and automation</li><li><i class="fa-solid fa-check"></i> Assisted implementation</li></ul>
+                <a class="btn btn-outline" href="/trial/register?plan=Professional" data-plan="Professional">Try Professional</a>
+            </article>
+        </div>
+        <p class="pricing-note">Taxes and one-time implementation charges may apply. Final scope is confirmed before purchase.</p>
+    </section>
+
+    <section class="access-section" id="company-access">
+        <div class="access-copy">
+            <span class="eyebrow">Existing customer?</span>
+            <h2>Open your secure company workspace</h2>
+            <p>Enter the company code provided during onboarding. Your branding, users and private ERP data will open automatically.</p>
+            <div><span><i class="fa-solid fa-database"></i> Separate database</span><span><i class="fa-solid fa-lock"></i> Role-based access</span></div>
+        </div>
+        <div class="access-card">
+            <span class="card-label">Company entry</span><h3>Welcome back</h3><p>Continue to your ERP login.</p>
+            {% if error %}<div class="form-error"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
+            <form action="/company-enter" method="post">
+                <label for="companyCode">Company Code</label>
+                <div class="code-input"><i class="fa-regular fa-building"></i><input id="companyCode" type="text" name="company_code" placeholder="Example: MANPRO" autocomplete="organization" required><button type="submit" aria-label="Continue"><i class="fa-solid fa-arrow-right"></i></button></div>
+            </form>
+            <small>Don’t know your company code? <a href="#contact">Contact support</a></small>
+        </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+        <div><span class="eyebrow">Ready to get started?</span><h2>See how ManPro fits your factory.</h2><p>Request a guided demonstration or activate your 15-day trial. We’ll help with setup and initial data.</p></div>
+        <div class="contact-actions"><a class="btn btn-white" href="mailto:sales@manpro.com?subject=ManPro%20ERP%20Demo%20Request">Request a Demo</a><a class="btn btn-ghost" href="/trial/register?plan=Business">Start Free Trial</a></div>
+    </section>
+</main>
+
+<footer>
+    <div class="footer-brand"><a class="brand" href="#home"><span class="brand-mark"><i class="fa-solid fa-industry"></i></span><span><strong>ManPro</strong><small>Plus ERP</small></span></a><p>Smart manufacturing management for growing Indian businesses.</p></div>
+    <div><strong>Product</strong><a href="#features">Features</a><a href="#modules">Modules</a><a href="#pricing">Pricing</a><a href="#updates">Updates</a></div>
+    <div><strong>Support</strong><a href="#company-access">Company Login</a><a href="#contact">Book a Demo</a><a href="#contact">Contact Support</a></div>
+    <div><strong>Legal</strong><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">Refund Policy</a></div>
+    <p class="copyright">© 2026 ManPro Plus. All rights reserved.</p>
+</footer>
 </body>
 </html>

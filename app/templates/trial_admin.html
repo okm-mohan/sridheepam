@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Trial Requests | ManPro Plus{% endblock %}
+{% block page_title %}Trial Requests{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/trial_admin.css">{% endblock %}
+{% block content %}
+<section class="trial-admin-hero">
+    <div><span>SAAS CONTROL CENTRE</span><h1>Trial Provisioning</h1><p>Review new customers, create isolated ERP workspaces and start trial access.</p></div>
+    <div class="template-badge"><small>Workspace template</small><strong>{{ template_database }}</strong></div>
+</section>
+
+{% if message %}<div class="admin-alert success"><i class="bi bi-check-circle-fill"></i><span>{{ message }}</span></div>{% endif %}
+{% if error %}<div class="admin-alert error"><i class="bi bi-exclamation-triangle-fill"></i><span>{{ error }}</span></div>{% endif %}
+
+<section class="trial-stats">
+    <a href="/trial-admin?status=all" class="{% if status_filter == 'all' %}active{% endif %}"><i class="bi bi-inboxes"></i><span>All Requests</span><strong>{{ counts.values()|sum }}</strong></a>
+    <a href="/trial-admin?status=Pending%20Provisioning" class="{% if status_filter == 'Pending Provisioning' %}active{% endif %}"><i class="bi bi-hourglass-split"></i><span>Pending</span><strong>{{ counts.get('Pending Provisioning', 0) }}</strong></a>
+    <a href="/trial-admin?status=Active%20Trial" class="{% if status_filter == 'Active Trial' %}active{% endif %}"><i class="bi bi-rocket-takeoff"></i><span>Active Trials</span><strong>{{ counts.get('Active Trial', 0) }}</strong></a>
+    <a href="/trial-admin?status=Rejected" class="{% if status_filter == 'Rejected' %}active{% endif %}"><i class="bi bi-x-circle"></i><span>Rejected</span><strong>{{ counts.get('Rejected', 0) }}</strong></a>
+</section>
+
+<section class="trial-request-panel">
+    <header><div><span>CUSTOMER ONBOARDING</span><h2>Trial Requests</h2></div><strong>{{ requests|length }} Records</strong></header>
+    <div class="trial-request-list">
+        {% for item in requests %}
+        <article class="request-card">
+            <div class="request-company">
+                <span class="company-letter">{{ item.company_name[:1]|upper }}</span>
+                <div><h3>{{ item.company_name }}</h3><p>{{ item.industry_type }} · {{ item.state }}</p><code>{{ item.company_code }}</code></div>
+            </div>
+            <div class="request-contact"><span>Contact</span><strong>{{ item.contact_name }}</strong><a href="tel:+91{{ item.mobile }}">+91 {{ item.mobile }}</a><a href="mailto:{{ item.email }}">{{ item.email }}</a></div>
+            <div class="request-plan"><span>Requested Plan</span><strong>{{ item.plan_name }}</strong><small>{{ item.expected_users }} expected user{% if item.expected_users != 1 %}s{% endif %}</small></div>
+            <div class="request-date"><span>Requested</span><strong>{{ item.created_at.strftime('%d-%m-%Y') if item.created_at else '-' }}</strong>{% if item.trial_end %}<small>Expires {{ item.trial_end.strftime('%d-%m-%Y') }}</small>{% endif %}</div>
+            <div class="request-status"><span class="status-pill {{ item.status|lower|replace(' ', '-') }}">{{ item.status }}</span></div>
+            {% if item.status == 'Pending Provisioning' %}
+            <div class="request-actions">
+                <form method="post" action="/trial-admin/{{ item.id }}/approve" class="approve-form" onsubmit="return confirm('Create and activate the workspace for {{ item.company_name|e }}?');">
+                    <label>Database name</label>
+                    <div><input name="database_name" value="manpro_{{ item.company_code|lower }}" pattern="[a-z0-9_]{3,64}" required><button type="submit"><i class="bi bi-rocket-takeoff"></i> Approve &amp; Create</button></div>
+                </form>
+                <form method="post" action="/trial-admin/{{ item.id }}/reject" onsubmit="return confirm('Reject this trial request?');"><button class="reject-button" type="submit"><i class="bi bi-x-lg"></i> Reject</button></form>
+            </div>
+            {% elif item.status == 'Active Trial' %}
+            <div class="active-details"><span>Login username</span><strong>admin</strong><a href="/switch-company">Open company entry <i class="bi bi-arrow-right"></i></a></div>
+            {% endif %}
+        </article>
+        {% else %}
+        <div class="empty-requests"><i class="bi bi-inbox"></i><strong>No trial requests found</strong><span>New customer registrations will appear here.</span></div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
