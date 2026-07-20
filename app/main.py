@@ -862,6 +862,15 @@ async def company_enter_page(request: Request):
     )
 
 
+@app.get("/founder")
+async def founder_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="founder.html",
+        context={"request": request},
+    )
+
+
 @app.post("/company-enter")
 async def company_enter(
     request: Request,
