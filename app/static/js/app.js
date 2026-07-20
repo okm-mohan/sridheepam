@@ -23,6 +23,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const backdrop = document.getElementById("sidebarBackdrop");
     const mobileBreakpoint = 991;
 
+    // Each page load recreates the fixed sidebar at scroll position 0. Keep the
+    // currently selected menu item visible without moving the main page.
+    const activeMenuLink = sidebar && sidebar.querySelector(".menu-list a.active");
+    if (sidebar && activeMenuLink) {
+        requestAnimationFrame(function () {
+            const linkTop = activeMenuLink.getBoundingClientRect().top - sidebar.getBoundingClientRect().top + sidebar.scrollTop;
+            const targetTop = Math.max(0, linkTop - (sidebar.clientHeight - activeMenuLink.offsetHeight) / 2);
+            sidebar.scrollTo({ top: targetTop, behavior: "auto" });
+        });
+    }
+
     function setSidebar(open) {
         if (!sidebar || !menuToggle || !backdrop) return;
 

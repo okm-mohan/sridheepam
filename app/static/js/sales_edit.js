@@ -85,9 +85,10 @@ function addRow() {
     </td>
 
     <td>
+        <input type="hidden" name="line_total" value="0">
         <input
             type="number"
-            name="line_total"
+            name="line_amount"
             value="0"
             class="form-control"
             readonly
@@ -199,6 +200,8 @@ function calculateRow(input){
         '[name="line_total"]'
     ).value =
         lineTotal.toFixed(2);
+
+    row.querySelector('[name="line_amount"]').value = amount.toFixed(2);
 
     calculateTotals();
 }

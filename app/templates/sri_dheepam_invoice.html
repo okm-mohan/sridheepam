@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GST Invoice - {{ sale.invoice_number }}</title>
+    <link rel="stylesheet" href="/static/css/sri_dheepam_invoice.css">
+    <link rel="stylesheet" href="/static/css/sri_dheepam_invoice_header.css">
+    <link rel="stylesheet" href="/static/css/invoice_actions.css">
+</head>
+<body>
+<nav class="invoice-actions no-print" aria-label="Invoice actions">
+    <a href="/sales" class="invoice-action secondary">Back to Sales</a>
+    <button type="button" class="invoice-action" data-print-preview>Print Preview</button>
+    <button type="button" class="invoice-action" data-download-pdf>Download PDF</button>
+    <button type="button" class="invoice-action primary" data-share-invoice>Share Invoice</button>
+</nav>
+<main class="sdp-invoice">
+    <div class="copy-line">(Issue of Invoice under GST 2017) White - Original for Recipient, Pink - Duplicate for Transporter, Yellow - Triplicate for Supplier, Green - Extra</div>
+    <header class="sdp-header">
+        <img class="sdp-logo" src="/static/images/sri-dheepam-emblem.png" alt="Sri Dheepam emblem">
+        <div class="sdp-company"><h1>SRI DHEEPAM POLYMERS</h1><p>Factory : SF No. 25/4, Malasan Kadu, Velanthavalam Road, Othakkalmandapam,<br>Coimbatore - 641 032. Cell : 98422 55530 <span>Email : -</span></p><strong>GSTIN : 33ALAPK5466B1ZJ</strong></div>
+    </header>
+    <section class="sdp-party"><div class="buyer"><p>To M/s. <b>{{ sale.company_name or sale.customer_name or '' }}</b></p><p class="address">{{ sale.address or '' }}</p><p>GSTIN: <b>{{ sale.gst_number or '' }}</b></p><p>PAN: ____________________ &nbsp; E-Way Bill No.: ____________________</p><p>Delivery at: {{ sale.address or '' }}</p></div><div class="invoice-info"><h2>INVOICE</h2><div class="number-date"><span>No. <b>{{ sale.invoice_number }}</b></span><span>Date: <b>{{ sale.sale_date.strftime('%d-%m-%Y') if sale.sale_date else '' }}</b></span></div><p>P.O. No. &amp; Date: _________________________</p><p>Transport: ________________________________</p><p>Vehicle No.: ______________________________</p><p>LR / RR No.: ______________________________</p></div></section>
+    <table class="sdp-items"><colgroup><col class="c-no"><col class="c-description"><col class="c-hsn"><col class="c-packages"><col class="c-qty"><col class="c-unit"><col class="c-rate-rs"><col class="c-rate-ps"><col class="c-amount-rs"><col class="c-amount-ps"></colgroup><thead><tr><th>S.<br>No.</th><th>Description of Goods</th><th>HSN<br>Code</th><th>No. of<br>Packages</th><th>Total Qty.<br>of Goods</th><th>Unit</th><th colspan="2">Rate per Unit<br><small>Rs. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Ps.</small></th><th colspan="2">Amount<br><small>Rs. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Ps.</small></th></tr></thead><tbody>{% for item in items[:5] %}{% set taxable = (item.quantity or 0) * (item.price or 0) %}<tr><td>{{ loop.index }}</td><td class="description">{{ item.product_name or item.product_code or '' }}</td><td>{{ item.hsn_code or '' }}</td><td></td><td class="numeric">{{ '%.3f'|format(item.quantity or 0) }}</td><td>{{ item.unit or 'Nos' }}</td><td class="numeric">{{ (item.price or 0)|int }}</td><td>{{ '%02d'|format((((item.price or 0) * 100)|round|int) % 100) }}</td><td class="numeric">{{ taxable|int }}</td><td>{{ '%02d'|format(((taxable * 100)|round|int) % 100) }}</td></tr>{% endfor %}{% for _ in range([5 - items|length, 0]|max) %}<tr class="empty"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>{% endfor %}</tbody></table>
+    <section class="sdp-summary"><div class="words"><b>Invoice Value (Rupees):</b><p>{{ amount_in_words }}</p></div><table><tr><td>Taxable Amount</td><td>{{ '%.2f'|format(sale.total_amount or 0) }}</td></tr><tr><td>CGST</td><td>{{ '%.2f'|format(sale.cgst_amount or 0) }}</td></tr><tr><td>SGST</td><td>{{ '%.2f'|format(sale.sgst_amount or 0) }}</td></tr><tr><td>IGST</td><td>{{ '%.2f'|format(sale.igst_amount or 0) }}</td></tr><tr><td>Round off</td><td>0.00</td></tr><tr><td>Freight Charges</td><td>0.00</td></tr><tr class="grand"><td>GRAND TOTAL</td><td>{{ '%.2f'|format(sale.grand_total or 0) }}</td></tr></table></section>
+    <section class="sdp-terms"><p><b>PAYMENT TERMS:</b> Within __________________ days from the date of bill.</p><p>Payment should be made by crossed cheques or drafts only. Payment immediately. If delayed interest @ 24% p.a. will be charged.</p><p>We certify that the particulars given above are true and correct and the amount indicated represents the price actually charged.</p></section>
+    <footer class="sdp-footer"><div>Received the goods in good condition<span>Receiver's Signature</span></div><div><b>For SRI DHEEPAM POLYMERS</b><span>Authorised Signatory</span></div></footer><p class="jurisdiction">Subject to Coimbatore Jurisdiction.</p>
+</main>
+<script src="/static/js/invoice_actions.js"></script>
+</body>
+</html>

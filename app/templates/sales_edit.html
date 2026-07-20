@@ -111,7 +111,7 @@
                         <th>CGST</th>
                         <th>SGST</th>
                         <th>IGST</th>
-                        <th>Total</th>
+                        <th>Amount<br><small>Excl. GST</small></th>
                         <th class="action-column"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
@@ -172,7 +172,8 @@
                         <td><input type="number" name="igst_amount" value="{{ item.igst_amount or 0 }}" readonly><input type="hidden" name="gst_amount" value="{{ item.gst_amount or ((item.total or 0) - ((item.quantity or 0) * (item.price or 0)))|round(2) }}"></td>
 
                         <td>
-                            <input type="number" name="line_total" value="{{ item.total }}" readonly>
+                            <input type="hidden" name="line_total" value="{{ item.total }}">
+                            <input type="number" name="line_amount" value="{{ ((item.quantity or 0) * (item.price or 0))|round(2) }}" readonly>
                         </td>
 
                         <td>

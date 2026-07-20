@@ -218,9 +218,10 @@ function addRow() {
     <td><input type="number" name="igst_amount" value="0" readonly><input type="hidden" name="gst_amount" value="0"></td>
 
     <td>
+        <input type="hidden" name="line_total" value="0">
         <input
             type="number"
-            name="line_total"
+            name="line_amount"
             value="0"
             readonly
         >
@@ -353,6 +354,8 @@ function calculateRow(input, updateTotals = true){
         '[name="line_total"]'
     ).value =
         lineTotal.toFixed(2);
+
+    row.querySelector('[name="line_amount"]').value = amount.toFixed(2);
 
     if (updateTotals) calculateTotals();
 }

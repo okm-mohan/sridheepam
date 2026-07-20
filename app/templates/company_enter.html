@@ -177,7 +177,7 @@
             {% if error %}<div class="form-error"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
             <form action="/company-enter" method="post">
                 <label for="companyCode">Company Code</label>
-                <div class="code-input"><i class="fa-regular fa-building"></i><input id="companyCode" type="text" name="company_code" placeholder="Example: MANPRO" autocomplete="organization" required><button type="submit" aria-label="Continue"><i class="fa-solid fa-arrow-right"></i></button></div>
+                <div class="code-input"><i class="fa-regular fa-building"></i><input id="companyCode" type="text" name="company_code" value="{{ company_code|default('') }}" placeholder="Example: MANPRO" autocomplete="organization" required><button type="submit" aria-label="Continue"><i class="fa-solid fa-arrow-right"></i></button></div>
             </form>
             <small>Don’t know your company code? <a href="#contact">Contact support</a></small>
         </div>

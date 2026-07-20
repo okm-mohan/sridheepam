@@ -855,6 +855,7 @@ async def company_enter_page(request: Request):
         context={
             "request": request,
             "error": "",
+            "company_code": "",
             "offers": content["offers"],
             "updates": content["updates"],
         },
@@ -877,6 +878,7 @@ async def company_enter(
             context={
                 "request": request,
                 "error": "Company code not found or inactive.",
+                "company_code": (company_code or "").strip().upper(),
                 "offers": content["offers"],
                 "updates": content["updates"],
             },
@@ -3571,8 +3573,6 @@ def sales_delete(sale_id: int):
 def purchase_reports(
     request: Request, from_date: str = None, to_date: str = None, supplier_id: int = 0
 ):
-
-    customer_name = company_name
     db = SessionLocal()
     ensure_gst_component_columns(db)
 
@@ -4054,14 +4054,14 @@ def monthly_sales_report(
 
             COUNT(*) AS sale_count,
 
-            SUM(x.total_qty) AS total_qty,
+            IFNULL(SUM(x.total_qty), 0) AS total_qty,
 
-            SUM(x.gst_amount) AS gst_amount,
-            SUM(x.cgst_amount) AS cgst_amount,
-            SUM(x.sgst_amount) AS sgst_amount,
-            SUM(x.igst_amount) AS igst_amount,
+            IFNULL(SUM(x.gst_amount), 0) AS gst_amount,
+            IFNULL(SUM(x.cgst_amount), 0) AS cgst_amount,
+            IFNULL(SUM(x.sgst_amount), 0) AS sgst_amount,
+            IFNULL(SUM(x.igst_amount), 0) AS igst_amount,
 
-            SUM(x.grand_total) AS sale_amount
+            IFNULL(SUM(x.grand_total), 0) AS sale_amount
 
         FROM
         (
@@ -4142,14 +4142,14 @@ def monthly_sales_report(
 
             COUNT(*) AS sale_count,
 
-            SUM(total_qty) AS total_qty,
+            IFNULL(SUM(total_qty), 0) AS total_qty,
 
-            SUM(gst_amount) AS total_gst,
-            SUM(cgst_amount) AS total_cgst,
-            SUM(sgst_amount) AS total_sgst,
-            SUM(igst_amount) AS total_igst,
+            IFNULL(SUM(gst_amount), 0) AS total_gst,
+            IFNULL(SUM(cgst_amount), 0) AS total_cgst,
+            IFNULL(SUM(sgst_amount), 0) AS total_sgst,
+            IFNULL(SUM(igst_amount), 0) AS total_igst,
 
-            SUM(grand_total) AS sale_amount
+            IFNULL(SUM(grand_total), 0) AS sale_amount
 
         FROM
         (
@@ -4520,6 +4520,27 @@ def render_gst_report(request, report_type, month=0, year=0):
     finally:
         db.close()
 
+    return templates.TemplateResponse(
+        request=request,
+        name="gst_report.html",
+        context={
+            "request": request,
+            "company": company,
+            "report": report,
+            "summary": summary,
+            "report_type": report_type,
+            "report_title": "Sales GST Report" if report_type == "sales" else "Purchase GST Report",
+            "party_label": "Customer Company" if report_type == "sales" else "Supplier Company",
+            "report_url": "/sales-gst-report" if report_type == "sales" else "/purchase-gst-report",
+            "pdf_url": "/sales-gst-report/pdf" if report_type == "sales" else "/purchase-gst-report/pdf",
+            "month": month,
+            "month_name": calendar.month_name[month],
+            "year": year,
+            "years": years,
+            "months": GST_REPORT_MONTHS,
+        },
+    )
+
 
 def ensure_trial_requests_table(db):
     db.execute(text("""
@@ -4755,27 +4776,6 @@ def provision_trial_workspace(master_db, trial_request, requested_database_name=
         raise
 
     return database_name
-
-    return templates.TemplateResponse(
-        request=request,
-        name="gst_report.html",
-        context={
-            "request": request,
-            "company": company,
-            "report": report,
-            "summary": summary,
-            "report_type": report_type,
-            "report_title": "Sales GST Report" if report_type == "sales" else "Purchase GST Report",
-            "party_label": "Customer Company" if report_type == "sales" else "Supplier Company",
-            "report_url": "/sales-gst-report" if report_type == "sales" else "/purchase-gst-report",
-            "pdf_url": "/sales-gst-report/pdf" if report_type == "sales" else "/purchase-gst-report/pdf",
-            "month": month,
-            "month_name": calendar.month_name[month],
-            "year": year,
-            "years": years,
-            "months": GST_REPORT_MONTHS,
-        },
-    )
 
 
 def render_gst_report_pdf(request, report_type, month=0, year=0, download=0):
@@ -8821,7 +8821,7 @@ def sales_invoice(request: Request, sale_id: int):
 
     return templates.TemplateResponse(
         request=request,
-        name="invoice.html",
+        name="sri_dheepam_invoice.html" if request.session.get("tenant_company_code", "").upper() == "SRIDHEEPAM" else "invoice.html",
         context={
             "request": request,
             "sale": sale,
