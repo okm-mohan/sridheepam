@@ -66,6 +66,7 @@ class TenantDatabaseMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         public_paths = (
             "/company-enter",
+            "/founder",
             "/trial/",
             "/manpro-admin",
             "/trial-admin",
