@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Upgrade Plan{% endblock %}
+{% block page_title %}Upgrade Plan{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/upgrade_plan.css">{% endblock %}
+
+{% block content %}
+<section class="upgrade-hero">
+    <div>
+        <span>MANPRO SUBSCRIPTION</span>
+        <h1>Choose the plan that fits your growth.</h1>
+        <p>Review your current subscription and compare available plans. Online payment will be enabled here shortly.</p>
+    </div>
+    <i class="bi bi-rocket-takeoff-fill"></i>
+</section>
+
+<section class="current-plan-card">
+    <div class="current-plan-icon"><i class="bi bi-shield-check"></i></div>
+    <div><span>Current plan for {{ company.company_name }}</span><h2>{{ company.plan_name or 'Starter' }}</h2><p>{{ company.subscription_status or 'Active' }}{% if company.trial_end %} &middot; Trial ends {{ company.trial_end.strftime('%d %b %Y') }}{% endif %}</p></div>
+    <div class="payment-note"><i class="bi bi-credit-card-2-front"></i><span>Secure online payment</span><small>Coming soon</small></div>
+</section>
+
+<section class="plan-heading"><span>PLAN OPTIONS</span><h2>Upgrade when you are ready</h2><p>All plans include secure cloud access, product updates and guided onboarding.</p></section>
+
+<section class="plan-grid">
+    {% for plan in plans %}
+    <article class="subscription-plan {% if plan.name == (company.plan_name or 'Starter') %}current{% endif %} {% if plan.popular %}popular{% endif %}">
+        {% if plan.popular %}<b>Most popular</b>{% endif %}
+        <span class="plan-label">{{ plan.name }}</span>
+        <div class="plan-price"><sup>&#8377;</sup><strong>{{ '{:,.0f}'.format(plan.price) }}</strong><span>/ month</span></div>
+        <p class="plan-users"><i class="bi bi-people"></i> {{ plan.users }}</p>
+        <ul>{% for feature in plan.features %}<li><i class="bi bi-check2-circle"></i>{{ feature }}</li>{% endfor %}</ul>
+        {% if plan.name == (company.plan_name or 'Starter') %}
+        <button type="button" disabled>Current plan</button>
+        {% else %}
+        <button type="button" disabled title="Online payment will be enabled soon"><i class="bi bi-lock"></i> Payment coming soon</button>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+
+<p class="upgrade-help"><i class="bi bi-info-circle"></i> Need help selecting a plan? Contact ManPro support for a guided upgrade.</p>
+{% endblock %}

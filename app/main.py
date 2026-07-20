@@ -1493,6 +1493,53 @@ def company(request: Request):
     )
 
 
+@app.get("/upgrade-plan")
+def upgrade_plan(request: Request):
+    blocked = admin_only_redirect(request)
+    if blocked:
+        return blocked
+
+    company_id = request.session.get("tenant_company_id")
+    if not company_id:
+        return RedirectResponse("/company-enter", status_code=303)
+
+    db = MasterSessionLocal()
+    try:
+        ensure_saas_subscription_columns(db)
+        company = db.execute(text("""
+            SELECT company_name, plan_name, subscription_status, trial_start, trial_end
+            FROM saas_companies
+            WHERE id=:company_id
+            LIMIT 1
+        """), {"company_id": company_id}).mappings().first()
+    finally:
+        db.close()
+
+    if not company:
+        return RedirectResponse("/company-enter", status_code=303)
+
+    plans = [
+        {
+            "name": "Starter", "price": 2999, "users": "Up to 3 users",
+            "features": ["Purchase, sales and stock", "GST reports", "Cloud backup"],
+        },
+        {
+            "name": "Business", "price": 5999, "users": "Up to 10 users",
+            "features": ["Everything in Starter", "Accounts and HR", "Advanced reports", "Priority support"],
+            "popular": True,
+        },
+        {
+            "name": "Professional", "price": 9999, "users": "Expanded user access",
+            "features": ["Everything in Business", "Production workflows", "AI tools and automation", "Assisted implementation"],
+        },
+    ]
+    return templates.TemplateResponse(
+        request=request,
+        name="upgrade_plan.html",
+        context={"request": request, "company": dict(company), "plans": plans},
+    )
+
+
 @app.post("/company/save")
 def save_company(
     request: Request,
