@@ -38,7 +38,7 @@
             </ul>
         </details></li>
 
-        {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) %}<li class="menu-group"><details><summary><span>Reports</span><i class="bi bi-chevron-down"></i></summary><ul>{% endif %}
+        {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) or screens.get('purchase_gst_report', true) or screens.get('sales_gst_report', true) %}<li class="menu-group"><details><summary><span>Reports</span><i class="bi bi-chevron-down"></i></summary><ul>{% endif %}
         {% if screens.get('purchase_reports', true) %}<li><a href="/purchase-reports"><i class="bi bi-file-earmark-bar-graph"></i><span>Purchase Reports</span></a></li>{% endif %}
         {% if screens.get('sales_reports', true) %}<li><a href="/sales-reports"><i class="bi bi-cart-check"></i><span>Sales Report</span></a></li>{% endif %}
         {% if screens.get('monthly_purchase_report', true) %}<li><a href="/monthly-purchase-report"><i class="bi bi-calendar3"></i><span>Monthly Purchase</span></a></li>{% endif %}
@@ -50,23 +50,19 @@
         {% if screens.get('sales_bank_statement', true) %}<li><a href="/sales-bank-statement"><i class="bi bi-bank2"></i><span>Sales Bank Statement</span></a></li>{% endif %}
         {% if screens.get('accounts_ledger', true) %}<li><a href="/accounts-ledger"><i class="bi bi-journal-text"></i><span>Accounts Ledger</span></a></li>{% endif %}
         {% if screens.get('expense_reports', true) %}<li><a href="/expense-reports"><i class="bi bi-graph-down-arrow"></i><span>Expense Report</span></a></li>{% endif %}
-        {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) %}</ul></details></li>{% endif %}
-
-        {% if screens.get('purchase_gst_report', true) or screens.get('sales_gst_report', true) %}<li class="menu-heading">GST Reports</li>{% endif %}
         {% if screens.get('purchase_gst_report', true) %}<li><a href="/purchase-gst-report"><i class="bi bi-receipt-cutoff"></i><span>Purchase GST Report</span></a></li>{% endif %}
         {% if screens.get('sales_gst_report', true) %}<li><a href="/sales-gst-report"><i class="bi bi-file-earmark-spreadsheet"></i><span>Sales GST Report</span></a></li>{% endif %}
+        {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) or screens.get('purchase_gst_report', true) or screens.get('sales_gst_report', true) %}</ul></details></li>{% endif %}
 
         {% if screens.get('ai_expense_analyzer', true) or screens.get('ai_chatbot', true) %}<li class="menu-heading">AI Tools</li>{% endif %}
         {% if screens.get('ai_expense_analyzer', true) %}<li><a href="/ai-expense-analyzer"><i class="bi bi-stars"></i><span>AI Expense Analyzer</span></a></li>{% endif %}
         {% if screens.get('ai_chatbot', true) %}<li><a href="/ai-chatbot"><i class="bi bi-robot"></i><span>AI Chatbot</span></a></li>{% endif %}
 
         {% if current_plan != 'enterprise' %}
-        <li class="menu-heading">Subscription</li>
         <li><a href="/upgrade-plan"><i class="bi bi-arrow-up-circle"></i><span>Upgrade Plan</span></a></li>
         {% endif %}
 
         {% if current_role in ["admin", "superadmin"] %}
-        <li class="menu-heading">Administration</li>
         <li><a href="/settings"><i class="bi bi-sliders2"></i><span>Settings</span></a></li>
         {% endif %}
     </ul>
