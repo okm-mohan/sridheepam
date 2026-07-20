@@ -5,3 +5,19 @@
 /* Four per-company subscription plans */
 .pricing-grid{grid-template-columns:repeat(4,1fr);max-width:1280px}
 @media(min-width:721px) and (max-width:1050px){.pricing-grid{grid-template-columns:repeat(2,1fr);max-width:720px}}
+
+/* Clearer public pricing cards */
+.pricing-section .section-heading h2{font-size:clamp(36px,4vw,50px)}
+.pricing-section .section-heading p{font-size:16px}
+.price-card{padding:34px 28px}
+.plan-name{font-size:22px}
+.price-card>p{font-size:13px;line-height:1.65;min-height:42px}
+.price{margin:26px 0}
+.price sup{font-size:18px}
+.price strong{font-size:44px}
+.price span{font-size:12px}
+.price-card ul{min-height:224px;padding:21px 0}
+.price-card li{font-size:13px;margin:15px 0}
+.price-card .btn{min-height:52px;font-size:14px}
+.pricing-note{font-size:12px}
+@media(max-width:720px){.price-card{padding:30px 25px}.price-card ul{min-height:0}.price strong{font-size:40px}}
