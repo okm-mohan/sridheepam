@@ -5,7 +5,10 @@ pymysql
 jinja2
 python-multipart
 itsdangerous
+# Passlib 1.7.x is not compatible with bcrypt 5.x.  Keep bcrypt on the
+# compatible 4.x release so bcrypt_sha256 can safely accept long passwords.
 passlib[bcrypt]
+bcrypt==4.0.1
 num2words
 openai
 reportlab
