@@ -54,7 +54,6 @@
         {% if screens.get('sales_gst_report', true) %}<li><a href="/sales-gst-report"><i class="bi bi-file-earmark-spreadsheet"></i><span>Sales GST Report</span></a></li>{% endif %}
         {% if screens.get('purchase_reports', true) or screens.get('sales_reports', true) or screens.get('monthly_purchase_report', true) or screens.get('monthly_sales_report', true) or screens.get('stock_valuation_report', true) or screens.get('supplier_outstanding_report', true) or screens.get('customer_outstanding_report', true) or screens.get('purchase_bank_statement', true) or screens.get('sales_bank_statement', true) or screens.get('accounts_ledger', true) or screens.get('expense_reports', true) or screens.get('purchase_gst_report', true) or screens.get('sales_gst_report', true) %}</ul></details></li>{% endif %}
 
-        {% if screens.get('ai_expense_analyzer', true) or screens.get('ai_chatbot', true) %}<li class="menu-heading">AI Tools</li>{% endif %}
         {% if screens.get('ai_expense_analyzer', true) %}<li><a href="/ai-expense-analyzer"><i class="bi bi-stars"></i><span>AI Expense Analyzer</span></a></li>{% endif %}
         {% if screens.get('ai_chatbot', true) %}<li><a href="/ai-chatbot"><i class="bi bi-robot"></i><span>AI Chatbot</span></a></li>{% endif %}
 
