@@ -21,6 +21,7 @@ import re
 import hashlib
 import secrets
 import smtplib
+import logging
 from email.message import EmailMessage
 from html import escape
 try:
@@ -59,6 +60,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 
 class TenantDatabaseMiddleware(BaseHTTPMiddleware):
@@ -950,7 +952,7 @@ async def platform_companies(request: Request, page: int = 1):
             "Company code": company_code,
         })
     except Exception:
-        pass
+        logger.exception("Unable to send new-trial notification email.")
 
     return templates.TemplateResponse(
         request=request,
@@ -1721,7 +1723,7 @@ def request_paid_plan(request: Request, plan_name: str = Form(...)):
     except Exception:
         # Email is an internal intimation only; it must not interrupt the
         # customer's plan-request workflow when SMTP is unavailable.
-        pass
+        logger.exception("Unable to send paid-plan notification email.")
 
     return RedirectResponse("/upgrade-plan?message=Your+upgrade+request+has+been+sent+to+ManPro.", status_code=303)
 
