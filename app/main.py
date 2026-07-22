@@ -983,21 +983,6 @@ async def platform_companies(request: Request, page: int = 1):
     finally:
         db.close()
 
-    try:
-        send_platform_notification("New trial request", {
-            "Company": values["company_name"],
-            "Contact": values["contact_name"],
-            "Email": values["email"],
-            "Mobile": f"+91 {values['mobile']}",
-            "State": values["state"],
-            "Industry": values["industry_type"],
-            "Expected users": expected_users,
-            "Requested plan": values["plan_name"],
-            "Company code": company_code,
-        })
-    except Exception:
-        logger.exception("Unable to send new-trial notification email.")
-
     return templates.TemplateResponse(
         request=request,
         name="platform_companies.html",
@@ -1233,6 +1218,21 @@ async def trial_register(request: Request):
         )
     finally:
         db.close()
+
+    try:
+        send_platform_notification("New trial request", {
+            "Company": values["company_name"],
+            "Contact": values["contact_name"],
+            "Email": values["email"],
+            "Mobile": f"+91 {values['mobile']}",
+            "State": values["state"],
+            "Industry": values["industry_type"],
+            "Expected users": expected_users,
+            "Requested plan": values["plan_name"],
+            "Company code": company_code,
+        })
+    except Exception:
+        logger.exception("Unable to send new-trial notification email.")
 
     return templates.TemplateResponse(
         request=request,
