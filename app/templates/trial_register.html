@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Start Your 15-Day Trial | ManPro Plus</title>
+    <title>Get 15 Days Free | ManPro Plus</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 
 <main class="trial-layout">
     <section class="trial-message">
-        <span class="trial-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> 15-day free trial</span>
+        <span class="trial-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> 15 days free</span>
         <h1>Let’s set up your manufacturing workspace.</h1>
         <p>Tell us about your business. Your company code will be reserved immediately, and our onboarding team will prepare your secure ERP workspace.</p>
         <div class="trial-points">
@@ -26,11 +26,11 @@
             <div><i class="fa-solid fa-database"></i><span><strong>Private company data</strong><small>Your production data stays inside your workspace.</small></span></div>
             <div><i class="fa-solid fa-headset"></i><span><strong>Guided onboarding</strong><small>We help configure your company and opening data.</small></span></div>
         </div>
-        <div class="selected-plan"><small>Selected trial package</small><strong>{{ selected_plan }}</strong><span>15 days · No credit card</span></div>
+        <div class="selected-plan"><small>Selected package</small><strong>{{ selected_plan }}</strong><span>15 days free · No credit card</span></div>
     </section>
 
     <section class="trial-card">
-        <div class="form-heading"><span>Trial registration</span><h2>Create your account</h2><p>Fields marked with * are required.</p></div>
+        <div class="form-heading"><span>15 days free registration</span><h2>Create your account</h2><p>Fields marked with * are required.</p></div>
         {% if error %}<div class="trial-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ error }}</span></div>{% endif %}
         <form method="post" action="/trial/register" class="trial-form">
             <div class="field full"><label for="companyName">Company Name *</label><div class="input-shell"><i class="fa-regular fa-building"></i><input id="companyName" name="company_name" value="{{ values.get('company_name', '') }}" placeholder="Registered or trading name" maxlength="180" required autofocus></div></div>
@@ -40,11 +40,11 @@
             <div class="field"><label for="state">State *</label><div class="input-shell"><i class="fa-solid fa-location-dot"></i><select id="state" name="state" required><option value="">Select state</option>{% for state in ['Tamil Nadu','Kerala','Karnataka','Andhra Pradesh','Telangana','Maharashtra','Gujarat','Delhi','Uttar Pradesh','West Bengal','Rajasthan','Madhya Pradesh','Odisha','Punjab','Haryana','Bihar','Jharkhand','Chhattisgarh','Assam','Other'] %}<option value="{{ state }}" {% if values.get('state') == state %}selected{% endif %}>{{ state }}</option>{% endfor %}</select></div></div>
             <div class="field"><label for="industry">Industry Type *</label><div class="input-shell"><i class="fa-solid fa-gears"></i><select id="industry" name="industry_type" required><option value="">Select industry</option>{% for industry in ['HDPE / PP Woven Packaging','Plastic & Polymer Manufacturing','Engineering & Fabrication','Textile Manufacturing','Food Manufacturing','Chemical Manufacturing','Automotive Components','General Manufacturing','Other'] %}<option value="{{ industry }}" {% if values.get('industry_type') == industry %}selected{% endif %}>{{ industry }}</option>{% endfor %}</select></div></div>
             <div class="field"><label for="users">Expected Users *</label><div class="input-shell"><i class="fa-solid fa-users"></i><input id="users" name="expected_users" type="number" min="1" max="500" value="{{ values.get('expected_users', '1') }}" required></div></div>
-            <div class="field"><label for="plan">Trial Package *</label><div class="input-shell"><i class="fa-regular fa-star"></i><select id="plan" name="plan_name" required>{% for plan in ['Starter','Business','Professional'] %}<option value="{{ plan }}" {% if selected_plan == plan %}selected{% endif %}>{{ plan }}</option>{% endfor %}</select></div></div>
+            <div class="field"><label for="plan">Selected Package *</label><div class="input-shell"><i class="fa-regular fa-star"></i><select id="plan" name="plan_name" required>{% for plan in ['Starter','Business','Professional'] %}<option value="{{ plan }}" {% if selected_plan == plan %}selected{% endif %}>{{ plan }}</option>{% endfor %}</select></div></div>
             <div class="field"><label for="password">Create Password *</label><div class="input-shell"><i class="fa-solid fa-lock"></i><input id="password" name="password" type="password" minlength="8" placeholder="Minimum 8 characters" required></div></div>
             <div class="field"><label for="confirmPassword">Confirm Password *</label><div class="input-shell"><i class="fa-solid fa-shield-halved"></i><input id="confirmPassword" name="confirm_password" type="password" minlength="8" placeholder="Re-enter password" required></div></div>
-            <label class="terms full"><input type="checkbox" name="accepted_terms" value="yes" required><span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>, and consent to being contacted about my ManPro trial.</span></label>
-            <button class="trial-submit full" type="submit"><span>Reserve My 15-Day Trial</span><i class="fa-solid fa-arrow-right"></i></button>
+            <label class="terms full"><input type="checkbox" name="accepted_terms" value="yes" required><span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>, and consent to being contacted about my ManPro package.</span></label>
+            <button class="trial-submit full" type="submit"><span>Get My 15 Days Free</span><i class="fa-solid fa-arrow-right"></i></button>
             <p class="secure-note full"><i class="fa-solid fa-lock"></i> Your password is encrypted before it is stored.</p>
         </form>
     </section>
