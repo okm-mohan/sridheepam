@@ -2,7 +2,9 @@
 {% block title %}Platform Overview | ManPro{% endblock %}
 {% block page_title %}Platform Overview{% endblock %}
 {% block content %}
-<section class="platform-welcome"><div><span>MANPRO SAAS COMMAND CENTRE</span><h1>Good to see you, {{ request.session.get('platform_admin_name','Super Admin') }}.</h1><p>Monitor customer growth, trials and platform activity from one private workspace.</p></div><a href="/trial-admin"><i class="bi bi-rocket-takeoff"></i> Review Trial Requests</a></section>
+<section class="platform-welcome"><div><span>MANPRO SAAS COMMAND CENTRE</span><h1>Good to see you, {{ request.session.get('platform_admin_name','Super Admin') }}.</h1><p>Monitor customer growth, trials and platform activity from one private workspace.</p></div><div class="platform-welcome-actions"><a href="/trial-admin"><i class="bi bi-rocket-takeoff"></i> Review Trial Requests</a><form method="post" action="/manpro-admin/test-email"><button type="submit"><i class="bi bi-envelope-check"></i> Send test email</button></form></div></section>
+{% if message %}<div class="platform-email-message success">{{ message }}</div>{% endif %}
+{% if error %}<div class="platform-email-message error"><strong>SMTP test failed:</strong> {{ error }}</div>{% endif %}
 <section class="platform-summary">
     <article><i class="bi bi-buildings"></i><div><span>Total Companies</span><strong>{{ summary.get('total_companies',0) }}</strong><small>Registered workspaces</small></div></article>
     <article><i class="bi bi-building-check"></i><div><span>Active Companies</span><strong>{{ summary.get('active_companies',0) }}</strong><small>Available for login</small></div></article>

@@ -1281,9 +1281,31 @@ async def platform_admin_dashboard(request: Request):
             "summary": dict(summary or {}),
             "companies": [dict(row) for row in companies],
             "pending": [dict(row) for row in pending],
+            "message": request.query_params.get("message", ""),
+            "error": request.query_params.get("error", ""),
             "platform_page": "dashboard",
         },
     )
+
+
+@app.post("/manpro-admin/test-email")
+async def platform_admin_test_email(request: Request):
+    blocked = platform_admin_redirect(request)
+    if blocked:
+        return blocked
+
+    try:
+        send_platform_notification("SMTP test email", {
+            "Status": "SMTP configuration is working.",
+            "Requested by": request.session.get("platform_admin_username", "Platform admin"),
+            "Sent at": datetime.now().strftime("%d %b %Y, %I:%M %p"),
+        })
+    except Exception as error:
+        logger.exception("SMTP test email failed.")
+        safe_error = re.sub(r"[^A-Za-z0-9 _.,:@()/-]", "", str(error))[:250]
+        return RedirectResponse(f"/manpro-admin?error={quote(safe_error or 'SMTP test failed.')}", status_code=303)
+
+    return RedirectResponse("/manpro-admin?message=Test+email+sent+successfully.+Check+manpro.erp@gmail.com.", status_code=303)
 
 
 @app.get("/trial-admin")
