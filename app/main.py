@@ -1034,6 +1034,40 @@ async def platform_company_details(request: Request, company_code: str):
     )
 
 
+@app.post("/manpro-admin/companies/{company_code}/sync-onboarding")
+async def sync_company_onboarding_profile(request: Request, company_code: str):
+    blocked = platform_admin_redirect(request)
+    if blocked:
+        return blocked
+
+    db = MasterSessionLocal()
+    normalized_code = company_code.strip().upper()
+    try:
+        company = db.execute(text("""
+            SELECT c.company_code, c.company_name, c.database_name, c.mobile, c.email,
+                   r.state
+            FROM saas_companies c
+            LEFT JOIN saas_trial_requests r ON r.company_code=c.company_code
+            WHERE c.company_code=:company_code
+            LIMIT 1
+        """), {"company_code": normalized_code}).mappings().first()
+        if not company:
+            raise ValueError("Company was not found.")
+        seed_tenant_company_profile(db, company["database_name"], company)
+        db.commit()
+        log_platform_admin_action(db, request, "tenant_profile_synced", f"Synced onboarding profile for {normalized_code}.")
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        logger.exception("Unable to sync tenant onboarding profile.")
+        safe_error = re.sub(r"[^A-Za-z0-9 _.,:'()-]", "", str(error))[:180]
+        return RedirectResponse(f"/manpro-admin/companies/{normalized_code}?error={quote(safe_error)}", status_code=303)
+    finally:
+        db.close()
+
+    return RedirectResponse(f"/manpro-admin/companies/{normalized_code}?message=Company+profile+synced.", status_code=303)
+
+
 @app.get("/founder")
 async def founder_page(request: Request):
     return templates.TemplateResponse(
@@ -4993,6 +5027,24 @@ def log_platform_admin_action(db, request, action, details=""):
     })
 
 
+def seed_tenant_company_profile(master_db, database_name, profile):
+    """Replace template company data with the approved tenant's profile."""
+    if not re.fullmatch(r"[a-z0-9_]{3,64}", database_name):
+        raise ValueError("Invalid tenant database name.")
+
+    master_db.execute(text(f"DELETE FROM `{database_name}`.`company`"))
+    master_db.execute(text(f"""
+        INSERT INTO `{database_name}`.`company`
+            (company_name, state, phone, email)
+        VALUES (:company_name, :state, :mobile, :email)
+    """), {
+        "company_name": profile["company_name"],
+        "state": profile.get("state") or "",
+        "mobile": profile.get("mobile") or "",
+        "email": profile.get("email") or "",
+    })
+
+
 def provision_trial_workspace(master_db, trial_request, requested_database_name=""):
     generated_name = f"manpro_{trial_request['company_code'].lower()}"
     database_name = (requested_database_name or generated_name).strip().lower()
@@ -5034,11 +5086,7 @@ def provision_trial_workspace(master_db, trial_request, requested_database_name=
                 f"Database '{database_name}' has an outdated users table. Import the current tenant template (missing: {', '.join(sorted(missing_user_columns))})."
             )
 
-        master_db.execute(text(f"""
-            INSERT INTO `{database_name}`.`company`
-                (company_name, state, phone, email)
-            VALUES (:company_name, :state, :mobile, :email)
-        """), dict(trial_request))
+        seed_tenant_company_profile(master_db, database_name, trial_request)
         master_db.execute(text(f"""
             INSERT INTO `{database_name}`.`users`
                 (username, password, full_name, email, role, is_active, status)
