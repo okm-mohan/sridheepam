@@ -2728,6 +2728,16 @@ def ensure_purchase_order_tables(db):
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """))
+    existing = {row["Field"] for row in db.execute(text("SHOW COLUMNS FROM purchase_orders")).mappings().all()}
+    for column, definition in {
+        "expected_delivery_date": "DATE NULL",
+        "payment_terms": "VARCHAR(150) NULL",
+    }.items():
+        if column not in existing:
+            db.execute(text(f"ALTER TABLE purchase_orders ADD COLUMN {column} {definition}"))
+    item_columns = {row["Field"] for row in db.execute(text("SHOW COLUMNS FROM purchase_order_items")).mappings().all()}
+    if "raw_material_id" not in item_columns:
+        db.execute(text("ALTER TABLE purchase_order_items ADD COLUMN raw_material_id INT NULL AFTER purchase_order_id"))
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS purchase_order_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2774,32 +2784,33 @@ def purchase_order_add(request: Request):
     try:
         ensure_purchase_order_tables(db)
         suppliers = db.execute(text("SELECT id, COALESCE(NULLIF(company_name,''), supplier_name) AS name, email, phone FROM suppliers ORDER BY name")).mappings().all()
+        materials = db.execute(text("SELECT id, material_name, purchase_price, 'Nos' AS unit FROM raw_materials ORDER BY material_name")).mappings().all()
         last_id = db.execute(text("SELECT COALESCE(MAX(id),0)+1 FROM purchase_orders")).scalar()
         company = db.execute(text("SELECT * FROM company LIMIT 1")).mappings().first() or {}
     finally:
         db.close()
-    return templates.TemplateResponse(request=request, name="purchase_order_form.html", context={"request": request, "suppliers": suppliers, "company": company, "po_number": f"PO-{date.today():%Y%m%d}-{int(last_id):03d}", "today": date.today().isoformat()})
+    return templates.TemplateResponse(request=request, name="purchase_order_form.html", context={"request": request, "suppliers": suppliers, "materials": materials, "company": company, "po_number": f"PO-{date.today():%Y%m%d}-{int(last_id):03d}", "today": date.today().isoformat()})
 
 
 @app.post("/purchase-orders/save")
 async def purchase_order_save(request: Request):
     form = await request.form()
     supplier_id = int(form.get("supplier_id") or 0)
-    descriptions, quantities, units, rates = form.getlist("item_description"), form.getlist("quantity"), form.getlist("unit"), form.getlist("unit_price")
+    material_ids, descriptions, quantities, units, rates = form.getlist("material_id"), form.getlist("item_description"), form.getlist("quantity"), form.getlist("unit"), form.getlist("unit_price")
     items, total = [], 0.0
-    for description, quantity, unit, rate in zip(descriptions, quantities, units, rates):
+    for material_id, description, quantity, unit, rate in zip(material_ids, descriptions, quantities, units, rates):
         if not str(description).strip(): continue
         line_total = float(quantity or 0) * float(rate or 0)
-        total += line_total; items.append((str(description).strip(), float(quantity or 0), str(unit).strip(), float(rate or 0), line_total))
+        total += line_total; items.append((int(material_id or 0), str(description).strip(), int(float(quantity or 0)), str(unit).strip(), float(rate or 0), line_total))
     if not supplier_id or not items:
         return RedirectResponse("/purchase-orders/add", status_code=303)
     db = SessionLocal()
     try:
         ensure_purchase_order_tables(db)
-        result = db.execute(text("""INSERT INTO purchase_orders (po_number,po_date,supplier_id,delivery_address,notes,total_amount,status) VALUES (:number,:date,:supplier,:address,:notes,:total,'Issued')"""), {"number": str(form.get("po_number")).strip(), "date": form.get("po_date"), "supplier": supplier_id, "address": str(form.get("delivery_address") or ""), "notes": str(form.get("notes") or ""), "total": total})
+        result = db.execute(text("""INSERT INTO purchase_orders (po_number,po_date,supplier_id,delivery_address,notes,total_amount,status,expected_delivery_date,payment_terms) VALUES (:number,:date,:supplier,:address,:notes,:total,'Issued',:delivery,:terms)"""), {"number": str(form.get("po_number")).strip(), "date": form.get("po_date"), "supplier": supplier_id, "address": str(form.get("delivery_address") or ""), "notes": str(form.get("notes") or ""), "total": total, "delivery": form.get("expected_delivery_date") or None, "terms": str(form.get("payment_terms") or "")})
         po_id = result.lastrowid
-        for description, quantity, unit, rate, line_total in items:
-            db.execute(text("INSERT INTO purchase_order_items (purchase_order_id,item_description,quantity,unit,unit_price,line_total) VALUES (:po,:description,:quantity,:unit,:rate,:total)"), {"po":po_id,"description":description,"quantity":quantity,"unit":unit,"rate":rate,"total":line_total})
+        for material_id, description, quantity, unit, rate, line_total in items:
+            db.execute(text("INSERT INTO purchase_order_items (purchase_order_id,raw_material_id,item_description,quantity,unit,unit_price,line_total) VALUES (:po,:material,:description,:quantity,:unit,:rate,:total)"), {"po":po_id,"material":material_id or None,"description":description,"quantity":quantity,"unit":unit,"rate":rate,"total":line_total})
         db.commit()
     finally: db.close()
     return RedirectResponse(f"/purchase-orders/{po_id}/print", status_code=303)
