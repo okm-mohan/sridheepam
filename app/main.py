@@ -3384,7 +3384,7 @@ async def purchase_update(request: Request):
     return RedirectResponse("/purchase", status_code=303)
 
 
-def ensure_sales_order_tables(db):
+def ensure_sales_order_tables(db, include_sales_references=False):
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS sales_orders (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3417,14 +3417,15 @@ def ensure_sales_order_tables(db):
             INDEX idx_sales_order_items_order (sales_order_id)
         )
     """))
-    sales_columns = {row["Field"] for row in db.execute(text("SHOW COLUMNS FROM sales")).mappings().all()}
-    for column, definition in {
-        "sales_order_id": "INT NULL",
-        "customer_order_number": "VARCHAR(100) NULL",
-        "customer_order_date": "DATE NULL",
-    }.items():
-        if column not in sales_columns:
-            db.execute(text(f"ALTER TABLE sales ADD COLUMN {column} {definition}"))
+    if include_sales_references:
+        sales_columns = {row["Field"] for row in db.execute(text("SHOW COLUMNS FROM sales")).mappings().all()}
+        for column, definition in {
+            "sales_order_id": "INT NULL",
+            "customer_order_number": "VARCHAR(100) NULL",
+            "customer_order_date": "DATE NULL",
+        }.items():
+            if column not in sales_columns:
+                db.execute(text(f"ALTER TABLE sales ADD COLUMN {column} {definition}"))
     db.commit()
 
 
@@ -3523,13 +3524,16 @@ async def sales_order_save(request: Request):
         document_path = f"/static/uploads/sales_orders/{filename}"
     approved_count = sum(item["approval"] == "Approved" for item in rows)
     status = "Approved" if approved_count == len(rows) else ("Partially Approved" if approved_count else "Pending Approval")
+    customer_value = str(form.get("customer_id") or "").strip()
+    if not customer_value.isdigit():
+        raise HTTPException(status_code=400, detail="Select a customer before saving the sales order.")
     db = SessionLocal()
     try:
         ensure_sales_order_tables(db)
         result = db.execute(text("""
             INSERT INTO sales_orders (order_number,order_date,customer_id,expected_delivery_date,customer_po_number,customer_po_date,approval_mode,status,notes,document_path,total_amount)
             VALUES (:number,:order_date,:customer,:delivery,:po_number,:po_date,:mode,:status,:notes,:document,:total)
-        """), {"number": str(form.get("order_number") or "").strip(), "order_date": form.get("order_date"), "customer": int(form.get("customer_id")), "delivery": form.get("expected_delivery_date") or None, "po_number": str(form.get("customer_po_number") or "").strip() or None, "po_date": form.get("customer_po_date") or None, "mode": mode, "status": status, "notes": str(form.get("notes") or ""), "document": document_path, "total": sum(item["total"] for item in rows)})
+        """), {"number": str(form.get("order_number") or "").strip(), "order_date": form.get("order_date"), "customer": int(customer_value), "delivery": form.get("expected_delivery_date") or None, "po_number": str(form.get("customer_po_number") or "").strip() or None, "po_date": form.get("customer_po_date") or None, "mode": mode, "status": status, "notes": str(form.get("notes") or ""), "document": document_path, "total": sum(item["total"] for item in rows)})
         order_id = result.lastrowid
         for item in rows:
             db.execute(text("""INSERT INTO sales_order_items (sales_order_id,product_id,quantity,unit_price,gst_percent,line_total,approval_status) VALUES (:order,:product,:quantity,:rate,:gst,:total,:approval)"""), {"order": order_id, **item})
@@ -3622,7 +3626,7 @@ def sales_add(request: Request):
 
     db = SessionLocal()
     ensure_gst_component_columns(db)
-    ensure_sales_order_tables(db)
+    ensure_sales_order_tables(db, include_sales_references=True)
 
     customers = db.execute(text("""
             SELECT
@@ -3700,7 +3704,7 @@ async def sales_save(request: Request):
 
     db = SessionLocal()
     ensure_gst_component_columns(db)
-    ensure_sales_order_tables(db)
+    ensure_sales_order_tables(db, include_sales_references=True)
     try:
         invoice_date = date.fromisoformat(str(sale_date))
     except (TypeError, ValueError):
