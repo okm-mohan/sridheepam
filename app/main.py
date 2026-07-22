@@ -25,6 +25,7 @@ import logging
 from email.message import EmailMessage
 from html import escape
 from urllib.request import Request as UrlRequest, urlopen
+from urllib.error import HTTPError
 try:
     from openai import AsyncOpenAI
 except ImportError:
@@ -279,9 +280,17 @@ def send_platform_notification(subject, details):
             },
             method="POST",
         )
-        with urlopen(request, timeout=15) as response:
-            if not 200 <= response.status < 300:
-                raise RuntimeError(f"Resend returned HTTP {response.status}.")
+        try:
+            with urlopen(request, timeout=15) as response:
+                if not 200 <= response.status < 300:
+                    raise RuntimeError(f"Resend returned HTTP {response.status}.")
+        except HTTPError as error:
+            response_body = error.read().decode("utf-8", errors="replace")[:500]
+            try:
+                response_message = json.loads(response_body).get("message") or response_body
+            except json.JSONDecodeError:
+                response_message = response_body
+            raise RuntimeError(f"Resend HTTP {error.code}: {response_message}") from error
         return
 
     smtp_host = os.getenv("SMTP_HOST", "").strip()
