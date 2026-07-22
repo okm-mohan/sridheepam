@@ -12,7 +12,7 @@
 <body>
 <div class="platform-layout">
     <aside class="platform-sidebar">
-        <a class="platform-brand" href="/manpro-admin"><span><i class="bi bi-buildings-fill"></i></span><div><strong>ManPro</strong><small>PLATFORM CONTROL</small></div></a>
+        <a class="platform-brand" href="/manpro-admin"><span><img src="/static/images/manpro-ai-logo.png" alt="ManPro AI" style="width:100%;height:100%;object-fit:contain;border-radius:9px;background:#fff"></span><div><strong>ManPro</strong><small>PLATFORM CONTROL</small></div></a>
         <div class="platform-owner"><span>{{ request.session.get('platform_admin_name','S')[:1]|upper }}</span><div><strong>{{ request.session.get('platform_admin_name','Super Admin') }}</strong><small>Platform Super Admin</small></div></div>
         <nav>
             <small>PLATFORM</small>
