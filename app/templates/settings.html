@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/css/settings.css">
 <style>
 .screen-navigation{display:grid;gap:12px;max-width:760px}.screen-menu-group{border:1px solid #dce4ef;border-radius:10px;background:#fff;overflow:hidden}.screen-menu-group summary{min-height:50px;padding:0 16px;display:flex;align-items:center;gap:11px;cursor:pointer;background:#f8fafc;color:#172554;font-size:14px;font-weight:850;list-style:none}.screen-menu-group summary::-webkit-details-marker{display:none}.screen-menu-group summary .bi-chevron-down{margin-left:auto;transition:transform .2s}.screen-menu-group details[open] summary .bi-chevron-down{transform:rotate(180deg)}.screen-submenu{padding:4px 10px 10px}.screen-submenu-item{position:relative;min-height:48px;padding:0 12px 0 28px;border-radius:7px;display:flex;align-items:center;justify-content:space-between;gap:14px;color:#334155;cursor:pointer}.screen-submenu-item:before{content:"";position:absolute;left:15px;top:0;bottom:0;width:1px;background:#d7deea}.screen-submenu-item:after{content:"";position:absolute;left:15px;top:24px;width:9px;height:1px;background:#d7deea}.screen-submenu-item:hover{background:#f1f5ff}.screen-submenu-item strong{font-size:13px}.screen-submenu-item small{margin-left:7px;color:#7c8799;font-size:11px}.screen-submenu-item .toggle-switch{margin-left:auto}
+.settings-save-bar{position:sticky;top:88px;z-index:15;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 16px;border:1px solid #cbd5e1;border-radius:10px;background:rgba(255,255,255,.97);box-shadow:0 8px 18px rgba(15,23,42,.1)}.settings-save-bar span{color:#64748b;font-size:13px}.settings-save-bar .settings-save-btn{margin-left:auto}@media(max-width:600px){.settings-save-bar{top:70px;align-items:stretch;flex-direction:column}.settings-save-bar .settings-save-btn{width:100%;justify-content:center}}
 </style>
 {% endblock %}
 
@@ -29,6 +30,10 @@
     {% endif %}
 
     <form action="/settings/save" method="post" class="settings-form" id="settingsForm">
+        <div class="settings-save-bar">
+            <span><i class="bi bi-shield-lock"></i> Only administrators can change these settings.</span>
+            <button type="submit" class="settings-save-btn"><i class="bi bi-check2-circle"></i> Save Settings</button>
+        </div>
         <section class="settings-panel">
             <div class="settings-panel-header">
                 <div>
@@ -107,10 +112,6 @@
             </div>
         </section>
 
-        <div class="settings-footer">
-            <span><i class="bi bi-shield-lock"></i> Only administrators can change these settings.</span>
-            <button type="submit" class="settings-save-btn"><i class="bi bi-check2-circle"></i> Save Settings</button>
-        </div>
     </form>
 </div>
 {% endblock %}
