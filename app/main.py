@@ -2764,18 +2764,21 @@ def ensure_purchase_order_tables(db):
 
 
 @app.get("/purchase-orders")
-def purchase_orders(request: Request):
+def purchase_orders(request: Request, from_date: str = "", to_date: str = ""):
+    from_date = from_date or (date.today() - timedelta(days=30)).isoformat()
+    to_date = to_date or date.today().isoformat()
     db = SessionLocal()
     try:
         ensure_purchase_order_tables(db)
         orders = db.execute(text("""
             SELECT po.*, COALESCE(NULLIF(s.company_name,''), s.supplier_name) AS supplier_name
             FROM purchase_orders po JOIN suppliers s ON s.id=po.supplier_id
+            WHERE po.po_date BETWEEN :from_date AND :to_date
             ORDER BY po.po_date DESC, po.id DESC
-        """)).mappings().all()
+        """), {"from_date": from_date, "to_date": to_date}).mappings().all()
     finally:
         db.close()
-    return templates.TemplateResponse(request=request, name="purchase_orders.html", context={"request": request, "orders": orders})
+    return templates.TemplateResponse(request=request, name="purchase_orders.html", context={"request": request, "orders": orders, "from_date": from_date, "to_date": to_date})
 
 
 @app.get("/purchase-orders/add")

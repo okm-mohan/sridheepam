@@ -1,1 +1,93 @@
-{% extends "base.html" %}{% block page_title %}Purchase Orders{% endblock %}{% block content %}<style>.po-page{max-width:1180px;margin:auto}.po-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.po-btn{padding:11px 15px;border-radius:8px;background:#2563eb;color:#fff;font-weight:800;text-decoration:none}.po-table{width:100%;border-collapse:collapse;background:#fff}.po-table th,.po-table td{padding:14px;border-bottom:1px solid #e5e7eb;text-align:left}.po-table th{background:#f8fafc;color:#64748b;font-size:12px}</style><div class="po-page"><div class="po-head"><div><h1>Purchase Orders</h1><p>Create, print, share and retain supplier purchase orders.</p></div><a class="po-btn" href="/purchase-orders/add">+ New Purchase Order</a></div><table class="po-table"><thead><tr><th>PO Number</th><th>Date</th><th>Supplier</th><th>Total</th><th>Action</th></tr></thead><tbody>{% for order in orders %}<tr><td>{{ order.po_number }}</td><td>{{ order.po_date }}</td><td>{{ order.supplier_name }}</td><td>₹ {{ '%.2f'|format(order.total_amount) }}</td><td><a href="/purchase-orders/{{ order.id }}/print">Print / Share</a></td></tr>{% else %}<tr><td colspan="5">No purchase orders created yet.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}
+{% extends "base.html" %}
+
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/purchase.css">
+{% endblock %}
+
+{% block content %}
+<div class="purchase-page">
+    <section class="purchase-hero">
+        <div>
+            <span class="purchase-kicker">Procurement Desk</span>
+            <h1>Purchase Orders</h1>
+            <p>Create, print, share and retain supplier purchase orders from one place.</p>
+        </div>
+        <a class="btn-add-purchase" href="/purchase-orders/add">
+            <i class="fas fa-plus"></i><span>New Purchase Order</span>
+        </a>
+    </section>
+
+    <section class="purchase-filter-panel">
+        <form class="purchase-filter-form" method="get" action="/purchase-orders">
+            <div class="purchase-filter-field">
+                <label for="from_date">From Date</label>
+                <div class="purchase-input-shell">
+                    <i class="fas fa-calendar-alt"></i>
+                    <input id="from_date" name="from_date" type="date" value="{{ from_date }}">
+                </div>
+            </div>
+            <div class="purchase-filter-field">
+                <label for="to_date">To Date</label>
+                <div class="purchase-input-shell">
+                    <i class="fas fa-calendar-alt"></i>
+                    <input id="to_date" name="to_date" type="date" value="{{ to_date }}">
+                </div>
+            </div>
+            <button class="btn-purchase-search" type="submit">
+                <i class="fas fa-search"></i><span>Search Orders</span>
+            </button>
+        </form>
+    </section>
+
+    <section class="purchase-panel">
+        <div class="purchase-panel-header">
+            <div>
+                <span class="purchase-panel-label">Purchase Order Register</span>
+                <h2>Orders</h2>
+            </div>
+            <span class="purchase-record-count">{{ orders|length }} record{{ '' if orders|length == 1 else 's' }}</span>
+        </div>
+        <div class="purchase-table-wrap">
+            <table class="purchase-table">
+                <thead>
+                    <tr>
+                        <th>PO Number</th>
+                        <th>Order Date</th>
+                        <th>Supplier</th>
+                        <th>Total Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><span class="purchase-no-pill">{{ order.po_number }}</span></td>
+                        <td>{{ order.po_date.strftime('%d-%m-%Y') if order.po_date.strftime else order.po_date }}</td>
+                        <td>
+                            <div class="purchase-supplier-cell">
+                                <span class="purchase-supplier-avatar">{{ (order.supplier_name or 'S')[0]|upper }}</span>
+                                <span>{{ order.supplier_name }}</span>
+                            </div>
+                        </td>
+                        <td class="purchase-amount-cell">&#8377; {{ '%.2f'|format(order.total_amount or 0) }}</td>
+                        <td>
+                            <div class="purchase-action-group">
+                                <a class="purchase-table-action purchase-edit-action" href="/purchase-orders/{{ order.id }}/print">
+                                    <i class="fas fa-print"></i><span>Print / Share</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="purchase-empty-cell">No purchase orders found for the selected dates.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
