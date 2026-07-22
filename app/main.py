@@ -340,6 +340,7 @@ templates = Jinja2Templates(env=env)
 
 SCREEN_DEFINITIONS = {
     "purchase": "Purchase",
+    "purchase_orders": "Purchase Orders",
     "sales": "Sales",
     "accounts": "Accounts",
     "hr": "HR Department",
@@ -385,6 +386,7 @@ SCREEN_PATHS = {
     "suppliers": ("/suppliers", "/supplier"),
     "customers": ("/customers", "/customer"),
     "purchase": ("/purchase",),
+    "purchase_orders": ("/purchase-orders",),
     "sales": ("/sales",),
     "accounts": ("/accounts", "/expenses", "/expense", "/income-expenses", "/account-head", "/account-transaction"),
     "hr": ("/hr", "/employee", "/employees", "/employee-advances", "/employee-attendance", "/salary-receipt"),

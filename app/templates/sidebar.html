@@ -18,9 +18,9 @@
     <ul class="menu-list">
         <li><a href="/"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
 
-        {% if screens.get('purchase', true) or screens.get('sales', true) or screens.get('accounts', true) or screens.get('hr', true) %}<li class="menu-heading">Transactions</li>{% endif %}
+        {% if screens.get('purchase', true) or screens.get('purchase_orders', true) or screens.get('sales', true) or screens.get('accounts', true) or screens.get('hr', true) %}<li class="menu-heading">Transactions</li>{% endif %}
         {% if screens.get('purchase', true) %}<li><a href="/purchase"><i class="bi bi-cart-plus"></i><span>Purchase</span></a></li>{% endif %}
-        {% if screens.get('purchase', true) %}<li><a href="/purchase-orders"><i class="bi bi-file-earmark-text"></i><span>Purchase Orders</span></a></li>{% endif %}
+        {% if screens.get('purchase_orders', true) %}<li><a href="/purchase-orders"><i class="bi bi-file-earmark-text"></i><span>Purchase Orders</span></a></li>{% endif %}
         {% if screens.get('sales', true) %}<li><a href="/sales"><i class="bi bi-receipt"></i><span>Sales</span></a></li>{% endif %}
         {% if screens.get('accounts', true) %}<li><a href="/accounts"><i class="bi bi-cash-coin"></i><span>Accounts</span></a></li>{% endif %}
         {% if screens.get('hr', true) %}<li><a href="/hr"><i class="bi bi-person-badge"></i><span>HR Department</span></a></li>{% endif %}
