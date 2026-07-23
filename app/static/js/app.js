@@ -79,6 +79,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (event.key === "Escape") setSidebar(false);
     });
 
+    const routeToggle = document.getElementById("showRoutes");
+    if (routeToggle) {
+        routeToggle.innerHTML = '<i class="bi bi-bezier2"></i><span>Hide today travelled routes</span>';
+        routeToggle.addEventListener("click", function () {
+            const label = routeToggle.querySelector("span");
+            if (label) label.textContent = routeToggle.classList.contains("off")
+                ? "Hide today travelled routes"
+                : "Show today travelled routes";
+        });
+    }
+
     window.addEventListener("resize", function () {
         if (window.innerWidth > mobileBreakpoint) setSidebar(false);
     });

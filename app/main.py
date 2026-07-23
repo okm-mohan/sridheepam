@@ -3602,6 +3602,25 @@ def hdfoods_shop_map(request: Request):
     return templates.TemplateResponse(request=request, name="hdfoods_order_map.html", context={"sample_orders": sample_orders})
 
 
+@app.get("/hdfoods/live-team-tracking")
+def hdfoods_live_team_tracking(request: Request):
+    if str(request.session.get("tenant_company_code") or "").upper() != "HDFOODS":
+        return RedirectResponse("/dashboard", status_code=303)
+    team = [
+        {"name":"Arun Kumar","initials":"AK","area":"RS Puram","status":"On route","stops":8,"distance":"14.2 km","last":"2 min ago","color":"#e55952","route":[[11.018,76.956],[11.021,76.961],[11.025,76.958],[11.027,76.964]]},
+        {"name":"Priya S","initials":"PS","area":"Gandhipuram","status":"In visit","stops":6,"distance":"10.8 km","last":"Now","color":"#4c8de8","route":[[11.025,76.969],[11.029,76.974],[11.032,76.971],[11.034,76.977]]},
+        {"name":"Mohan Raj","initials":"MR","area":"Peelamedu","status":"On route","stops":9,"distance":"17.4 km","last":"5 min ago","color":"#ef9c38","route":[[11.021,77.005],[11.026,77.012],[11.029,77.018],[11.032,77.021]]},
+        {"name":"Kavitha R","initials":"KR","area":"Singanallur","status":"In visit","stops":5,"distance":"8.7 km","last":"Now","color":"#9b65d9","route":[[11.007,77.022],[11.004,77.027],[11.000,77.032],[10.998,77.036]]},
+        {"name":"Suresh B","initials":"SB","area":"Saibaba Colony","status":"On route","stops":7,"distance":"12.1 km","last":"4 min ago","color":"#1ba978","route":[[11.024,76.939],[11.028,76.944],[11.032,76.947],[11.035,76.942]]},
+        {"name":"Nithya M","initials":"NM","area":"Ukkadam","status":"Break","stops":4,"distance":"7.5 km","last":"18 min ago","color":"#d0618f","route":[[10.995,76.964],[10.991,76.969],[10.989,76.974]]},
+        {"name":"Ravi K","initials":"RK","area":"Kalapatti","status":"On route","stops":6,"distance":"15.8 km","last":"3 min ago","color":"#3f9dca","route":[[11.046,77.024],[11.052,77.031],[11.057,77.037],[11.061,77.042]]},
+        {"name":"Divya P","initials":"DP","area":"Sundarapuram","status":"In visit","stops":8,"distance":"11.2 km","last":"Now","color":"#ea7155","route":[[10.980,76.962],[10.975,76.968],[10.971,76.974],[10.968,76.979]]},
+        {"name":"Vignesh T","initials":"VT","area":"Ganapathy","status":"Offline","stops":3,"distance":"5.4 km","last":"42 min ago","color":"#778398","route":[[11.037,76.994],[11.042,76.998],[11.045,77.003]]},
+        {"name":"Meena L","initials":"ML","area":"Kuniamuthur","status":"On route","stops":7,"distance":"13.6 km","last":"6 min ago","color":"#b08a32","route":[[10.995,76.941],[10.991,76.936],[10.987,76.932],[10.984,76.928]]},
+    ]
+    return templates.TemplateResponse(request=request, name="hdfoods_team_tracking.html", context={"team": team})
+
+
 @app.get("/sales-orders/{order_id}")
 def sales_order_view(request: Request, order_id: int):
     db = SessionLocal()
