@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block page_title %}HD Foods Field Sales{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/hdfoods_dashboard.css">{% endblock %}
+{% block content %}
+<main class="hd-dashboard">
+    <section class="hd-hero">
+        <div class="hd-hero-copy">
+            <div class="hd-eyebrow"><i class="bi bi-lightning-charge-fill"></i> HD FOODS · FIELD SALES</div>
+            <h1>Good day, {{ full_name }} <span>👋</span></h1>
+            <p>Your distribution workspace for visits, orders, deliveries, and collections.</p>
+            <div class="hd-hero-actions">
+                <a class="hd-primary-action" href="/sales-orders/add"><i class="bi bi-plus-lg"></i> Create order</a>
+                <a class="hd-secondary-action" href="/customers"><i class="bi bi-shop"></i> Add shop</a>
+            </div>
+        </div>
+        <div class="hd-hero-orb hd-orb-one"></div><div class="hd-hero-orb hd-orb-two"></div>
+        <div class="hd-hero-status"><i class="bi bi-geo-alt-fill"></i><span><small>Today’s focus</small><strong>Field distribution</strong></span></div>
+    </section>
+
+    <section class="hd-kpis" aria-label="Today’s performance">
+        <article class="hd-stat hd-stat-visits"><span class="hd-stat-icon"><i class="bi bi-pin-map-fill"></i></span><div><small>Today’s visits</small><strong>{{ today_visits }}</strong><em><i class="bi bi-check2"></i> {{ completed_visits }} completed</em></div></article>
+        <article class="hd-stat hd-stat-followups"><span class="hd-stat-icon"><i class="bi bi-bell-fill"></i></span><div><small>Follow-ups due</small><strong>{{ followups_due }}</strong><em>Need attention today</em></div></article>
+        <article class="hd-stat hd-stat-sales"><span class="hd-stat-icon"><i class="bi bi-cash-coin"></i></span><div><small>Today’s sales</small><strong>₹ {{ "%.0f"|format(today_sales) }}</strong><em>Invoiced today</em></div></article>
+        <article class="hd-stat hd-stat-shops"><span class="hd-stat-icon"><i class="bi bi-shop-window"></i></span><div><small>Active shops</small><strong>{{ customer_count }}</strong><em>In your network</em></div></article>
+    </section>
+
+    <section class="hd-workspace">
+        <article class="hd-card hd-deliveries">
+            <header class="hd-card-header"><div><span class="hd-section-label">DISTRIBUTION PULSE</span><h2>Upcoming deliveries</h2><p>Keep every delivery cycle on schedule.</p></div><a href="/hdfoods/delivery-cycles" aria-label="Open delivery list">View all <i class="bi bi-arrow-up-right"></i></a></header>
+            {% set delivery_total = delivery_overdue + delivery_due_today + delivery_due_soon %}
+            {% set overdue_percent = (delivery_overdue / delivery_total * 100) if delivery_total else 0 %}
+            {% set today_percent = (delivery_due_today / delivery_total * 100) if delivery_total else 0 %}
+            <div class="hd-delivery-body">
+                <div class="hd-chart hd-donut-chart" role="img" aria-label="Delivery status: {{ delivery_overdue }} overdue, {{ delivery_due_today }} due today, {{ delivery_due_soon }} due in three days">
+                    <div class="hd-chart-scale"><span>Delivery overview</span><span>Next 3 days</span></div>
+                    <div class="hd-donut-layout">
+                        <div class="hd-donut" style="background:conic-gradient(#ee5a51 0 {{ overdue_percent }}%, #f3b429 {{ overdue_percent }}% {{ overdue_percent + today_percent }}%, #18a873 {{ overdue_percent + today_percent }}% 100%);"><div><strong>{{ delivery_total }}</strong><small>deliveries</small></div></div>
+                        <div class="hd-donut-legend"><div><i class="hd-legend-overdue"></i><span>Overdue<small>Needs action</small></span><strong>{{ delivery_overdue }}</strong></div><div><i class="hd-legend-today"></i><span>Due today<small>Priority today</small></span><strong>{{ delivery_due_today }}</strong></div><div><i class="hd-legend-soon"></i><span>Next 3 days<small>Plan ahead</small></span><strong>{{ delivery_due_soon }}</strong></div></div>
+                    </div>
+                </div>
+                <div class="hd-delivery-summary"><div class="hd-summary-icon"><i class="bi bi-truck"></i></div><h3>Delivery schedule</h3><p>{% if delivery_overdue or delivery_due_today or delivery_due_soon %}You have delivery activity to review. Prioritise overdue and due-today orders first.{% else %}No delivery cycles are scheduled yet. Add a cycle to start tracking your distribution plan.{% endif %}</p><a class="hd-outline-button" href="/hdfoods/delivery-cycles"><i class="bi bi-calendar2-week"></i> Manage cycles</a></div>
+            </div>
+        </article>
+
+        <aside class="hd-card hd-quick-actions"><header class="hd-card-header"><div><span class="hd-section-label">QUICK ACTIONS</span><h2>Start your day</h2></div></header><div class="hd-action-list"><a href="/customers"><span class="hd-action-icon hd-action-green"><i class="bi bi-shop"></i></span><span><strong>Add a shop</strong><small>Grow your customer network</small></span><i class="bi bi-chevron-right"></i></a><a href="/sales-orders/add"><span class="hd-action-icon hd-action-blue"><i class="bi bi-clipboard-plus"></i></span><span><strong>Create an order</strong><small>Record a shop order</small></span><i class="bi bi-chevron-right"></i></a><a href="/sales/add"><span class="hd-action-icon hd-action-orange"><i class="bi bi-receipt"></i></span><span><strong>Create invoice</strong><small>Complete a sale</small></span><i class="bi bi-chevron-right"></i></a><a href="/customer-outstanding-report"><span class="hd-action-icon hd-action-purple"><i class="bi bi-wallet2"></i></span><span><strong>Collections</strong><small>Review outstanding payments</small></span><i class="bi bi-chevron-right"></i></a></div></aside>
+    </section>
+</main>
+{% endblock %}

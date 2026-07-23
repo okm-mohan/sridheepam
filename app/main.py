@@ -1556,6 +1556,18 @@ async def dashboard(request: Request):
 
     db = SessionLocal()
 
+    if str(request.session.get("tenant_company_code") or "").upper() == "HDFOODS":
+        today_sales_value = db.execute(text("SELECT IFNULL(SUM(grand_total),0) FROM sales WHERE sale_date=CURDATE()")).scalar() or 0
+        customer_count = db.execute(text("SELECT COUNT(*) FROM customers")).scalar() or 0
+        db.close()
+        return templates.TemplateResponse(request=request, name="hdfoods_dashboard.html", context={
+            "request": request,
+            "full_name": request.session.get("full_name", request.session["user"]),
+            "today_visits": 0, "completed_visits": 0, "followups_due": 0,
+            "today_sales": today_sales_value, "customer_count": customer_count,
+            "delivery_overdue": 0, "delivery_due_today": 0, "delivery_due_soon": 0,
+        })
+
     today_sales = db.execute(text("""
         SELECT IFNULL(SUM(grand_total),0)
         FROM sales

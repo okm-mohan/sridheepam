@@ -1,6 +1,42 @@
 {% set screens = request.state.screen_settings %}
-{% set current_role = request.session.get("role", "Admin")|lower|replace(" ", "")|replace("_", "")|replace("-", "") %}
+{% set current_role = request.session.get("role", "Admin")|trim|lower|replace(" ", "")|replace("_", "")|replace("-", "") %}
 {% set current_plan = request.session.get("tenant_plan_name", "")|lower|trim %}
+{% set tenant_code = request.session.get("tenant_company_code", "")|upper %}
+{% if tenant_code == "HDFOODS" %}
+<div class="sidebar" id="sidebar">
+    <div class="logo-section"><div class="company-logo"><div class="logo-circle"><img src="/static/images/manpro-ai-logo.png" alt="HD Foods" style="width:100%;height:100%;object-fit:contain;border-radius:10px;background:#fff"></div><div class="company-name"><span class="company-title">HD FOODS</span></div></div></div>
+    <ul class="menu-list">
+        <li><a href="/dashboard"><i class="bi bi-grid-1x2"></i><span>Field Sales Home</span></a></li>
+        <li class="menu-heading">Field Operations</li>
+        <li><a href="/customers"><i class="bi bi-shop"></i><span>Shops & Customers</span></a></li>
+        <li><a href="/sales-orders"><i class="bi bi-clipboard-check"></i><span>On-Going Orders</span></a></li>
+        <li><a href="/hdfoods/shop-map"><i class="bi bi-map"></i><span>Show Map of Order</span></a></li>
+        <li><a href="/hdfoods/quotations"><i class="bi bi-file-earmark-text"></i><span>Quotations</span></a></li>
+        <li><a href="/sales"><i class="bi bi-receipt"></i><span>Sales & Invoices</span></a></li>
+        <li><a href="/customer-outstanding-report"><i class="bi bi-wallet2"></i><span>Collections</span></a></li>
+        <li class="menu-heading">Marketing</li>
+        <li><a href="/hdfoods/daily-visits"><i class="bi bi-geo-alt"></i><span>Daily Visiting</span></a></li>
+        <li><a href="/hdfoods/followups"><i class="bi bi-bell"></i><span>Follow-ups</span></a></li>
+        <li><a href="/hdfoods/disclosed"><i class="bi bi-chat-square-text"></i><span>Disclosed</span></a></li>
+        {% if current_role in ["admin", "administrator", "superadmin"] %}<li><a href="/hdfoods/live-team-tracking"><i class="bi bi-broadcast-pin"></i><span>Live Team Tracking</span></a></li>{% endif %}
+        <li class="menu-heading">Distribution</li>
+        <li><a href="/hdfoods/item-delivery"><i class="bi bi-truck"></i><span>Item Delivery</span></a></li>
+        <li><a href="/hdfoods/delivery-cycles"><i class="bi bi-calendar2-week"></i><span>Delivery Cycle & Reminders</span></a></li>
+        <li><a href="/products"><i class="bi bi-box-seam"></i><span>Products & Pricing</span></a></li>
+        <li><a href="/hdfoods/upcoming-products"><i class="bi bi-boxes"></i><span>Upcoming Products</span></a></li>
+        <li class="menu-group"><details><summary><span>Purchase</span><i class="bi bi-chevron-down"></i></summary><ul><li><a href="/purchase-orders"><i class="bi bi-file-earmark-plus"></i><span>Create Purchase Order</span></a></li><li><a href="/purchase"><i class="bi bi-cart-plus"></i><span>Purchase Entry</span></a></li><li><a href="/stock-valuation-report"><i class="bi bi-bar-chart"></i><span>Stock Report</span></a></li><li><a href="/supplier-outstanding-report"><i class="bi bi-cash-stack"></i><span>Purchase Payments</span></a></li></ul></details></li>
+        <li><a href="/suppliers"><i class="bi bi-truck"></i><span>Suppliers</span></a></li>
+        <li><a href="/accounts"><i class="bi bi-cash-stack"></i><span>Accounts</span></a></li>
+        <li class="menu-heading">Management</li>
+        {% if current_role in ["admin", "administrator", "superadmin"] %}<li><a href="/company"><i class="bi bi-building"></i><span>My Company</span></a></li><li><a href="/users"><i class="bi bi-people"></i><span>Users</span></a></li>{% endif %}
+        <li><a href="/sales-reports"><i class="bi bi-bar-chart"></i><span>Sales Reports</span></a></li>
+        <li class="menu-heading">Workspace</li>
+        <li class="menu-group"><details><summary><span>AI Tools</span><i class="bi bi-chevron-down"></i></summary><ul><li><a href="/ai-expense-analyzer"><i class="bi bi-stars"></i><span>Expense Analyzer</span></a></li><li><a href="/ai-chatbot"><i class="bi bi-robot"></i><span>AI Assistant</span></a></li></ul></details></li>
+        <li><a href="/upgrade-plan"><i class="bi bi-gem"></i><span>My Plan</span></a></li>
+        {% if current_role in ["admin", "administrator", "superadmin"] %}<li><a href="/settings"><i class="bi bi-sliders2"></i><span>Settings</span></a></li>{% endif %}
+    </ul>
+</div>
+{% else %}
 <div class="sidebar" id="sidebar">
     <div class="logo-section">
         <div class="company-logo">
@@ -75,3 +111,4 @@
         {% endif %}
     </ul>
 </div>
+{% endif %}
