@@ -3470,6 +3470,35 @@ def sales_order_add(request: Request):
     return templates.TemplateResponse(request=request, name="sales_order_form.html", context={"request": request, "customers": customers, "products": products, "today": date.today().isoformat(), "order_number": f"SO-{date.today():%Y%m%d}-{int(next_id):03d}"})
 
 
+@app.post("/sales-orders/{order_id}/approve")
+def approve_sales_order(request: Request, order_id: int, from_date: str = Form(""), to_date: str = Form("")):
+    """Approve every remaining line on a sales order from the order register."""
+    role = str(request.session.get("role") or "").strip().lower().replace(" ", "")
+    if role not in {"admin", "administrator", "superadmin"}:
+        raise HTTPException(status_code=403, detail="Only an administrator can approve a sales order.")
+
+    db = SessionLocal()
+    try:
+        ensure_sales_order_tables(db)
+        order = db.execute(text("SELECT id, status FROM sales_orders WHERE id=:id"), {"id": order_id}).mappings().first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Sales order not found.")
+        if order["status"] != "Approved":
+            db.execute(text("UPDATE sales_order_items SET approval_status='Approved' WHERE sales_order_id=:id AND approval_status <> 'Approved'"), {"id": order_id})
+            db.execute(text("UPDATE sales_orders SET status='Approved' WHERE id=:id"), {"id": order_id})
+            db.commit()
+    finally:
+        db.close()
+
+    query = []
+    if from_date:
+        query.append(f"from_date={quote(from_date)}")
+    if to_date:
+        query.append(f"to_date={quote(to_date)}")
+    suffix = f"?{'&'.join(query)}" if query else ""
+    return RedirectResponse(f"/sales-orders{suffix}", status_code=303)
+
+
 @app.post("/sales-orders/scan")
 async def sales_order_scan(order_scan: UploadFile = File(...)):
     """Extract key header data from a customer PO when the optional AI key is configured."""

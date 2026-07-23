@@ -61,7 +61,7 @@
         </div>
         <div class="sales-orders-table-wrap">
             <table class="sales-orders-table">
-                <thead><tr><th>Sales Order</th><th>Date</th><th>Customer</th><th>Customer PO</th><th>Approval</th><th>Total</th></tr></thead>
+                <thead><tr><th>Sales Order</th><th>Date</th><th>Customer</th><th>Customer PO</th><th>Approval</th><th>Total</th><th>Actions</th></tr></thead>
                 <tbody>
                     {% for order in orders %}
                     <tr>
@@ -71,9 +71,20 @@
                         <td>{{ order.customer_po_number or "—" }}</td>
                         <td><span class="sales-order-status status-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span></td>
                         <td class="sales-orders-amount-cell">&#8377; {{ "%.2f"|format(order.total_amount or 0) }}</td>
+                        <td>
+                            {% if order.status != "Approved" and request.session.get("role", "")|lower|replace(" ", "") in ["admin", "administrator", "superadmin"] %}
+                            <form method="post" action="/sales-orders/{{ order.id }}/approve" class="sales-order-approve-form" onsubmit="return confirm('Approve all remaining items in {{ order.order_number }}?');">
+                                <input type="hidden" name="from_date" value="{{ from_date }}">
+                                <input type="hidden" name="to_date" value="{{ to_date }}">
+                                <button type="submit" class="btn-approve-sales-order"><i class="bi bi-check2-circle"></i><span>Approve</span></button>
+                            </form>
+                            {% else %}
+                            <span class="sales-order-action-muted">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6"><div class="sales-orders-empty-state"><i class="bi bi-clipboard-x"></i><strong>No sales orders found</strong><span>Try changing the date range or create your first customer sales order.</span><a href="/sales-orders/add">Create Sales Order</a></div></td></tr>
+                    <tr><td colspan="7"><div class="sales-orders-empty-state"><i class="bi bi-clipboard-x"></i><strong>No sales orders found</strong><span>Try changing the date range or create your first customer sales order.</span><a href="/sales-orders/add">Create Sales Order</a></div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
