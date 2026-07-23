@@ -3561,6 +3561,32 @@ def sales_order_add(request: Request):
     return templates.TemplateResponse(request=request, name="sales_order_form.html", context={"request": request, "customers": customers, "products": products, "today": date.today().isoformat(), "order_number": f"SO-{date.today():%Y%m%d}-{int(next_id):03d}"})
 
 
+@app.get("/hdfoods/orders")
+def hdfoods_orders(request: Request, from_date: str = "", to_date: str = ""):
+    if str(request.session.get("tenant_company_code") or "").upper() != "HDFOODS":
+        return RedirectResponse("/sales-orders", status_code=303)
+    from_date = from_date or (date.today() - timedelta(days=30)).isoformat()
+    to_date = to_date or date.today().isoformat()
+    db = SessionLocal()
+    try:
+        ensure_sales_order_tables(db)
+        orders = db.execute(text("""
+            SELECT so.*, COALESCE(NULLIF(c.company_name,''), c.customer_name) AS customer_name, c.mobile AS customer_mobile
+            FROM sales_orders so JOIN customers c ON c.id=so.customer_id
+            WHERE so.order_date BETWEEN :from_date AND :to_date
+            ORDER BY so.order_date DESC, so.id DESC
+        """), {"from_date": from_date, "to_date": to_date}).mappings().all()
+    finally:
+        db.close()
+    order_rows = [dict(order) for order in orders]
+    return templates.TemplateResponse(request=request, name="hdfoods_orders.html", context={
+        "orders": order_rows, "from_date": from_date, "to_date": to_date,
+        "order_count": len(order_rows), "order_amount": sum(float(o.get("total_amount") or 0) for o in order_rows),
+        "pending_count": sum(o.get("status") == "Pending Approval" for o in order_rows),
+        "approved_count": sum(o.get("status") == "Approved" for o in order_rows),
+    })
+
+
 @app.get("/sales-orders/{order_id}")
 def sales_order_view(request: Request, order_id: int):
     db = SessionLocal()
