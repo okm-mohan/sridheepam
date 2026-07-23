@@ -1,4 +1,83 @@
 {% extends "base.html" %}
+
 {% block page_title %}Sales Orders{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="/static/css/sales_add.css"><style>.sales-orders-page{max-width:1500px;margin:auto;display:grid;gap:18px}.sales-orders-filter,.sales-orders-panel{background:#fff;border:1px solid #dce4ef;border-radius:14px;box-shadow:0 12px 28px rgba(15,23,42,.06)}.sales-orders-filter{padding:18px 22px;display:flex;gap:16px;align-items:end;flex-wrap:wrap}.sales-orders-filter label{display:grid;gap:6px;font-weight:800;font-size:13px}.sales-orders-filter input{height:42px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px}.sales-orders-panel{overflow:hidden}.sales-orders-title{padding:20px 24px;border-bottom:1px solid #e2e8f0}.sales-orders-title span{color:#0f766e;text-transform:uppercase;font-weight:850;font-size:12px;letter-spacing:1px}.sales-orders-title h2{margin:4px 0 0;font-size:21px}.sales-orders-table{width:100%;border-collapse:collapse}.sales-orders-table th,.sales-orders-table td{padding:15px 20px;border-bottom:1px solid #e7edf5;text-align:left}.sales-orders-table th{background:#f0fdfa;color:#475569;font-size:12px;text-transform:uppercase}.sales-order-number{font-weight:850;color:#0f766e}.order-status{padding:5px 10px;border-radius:999px;font-weight:800;font-size:12px}.status-Approved{background:#dcfce7;color:#166534}.status-Partially-Approved{background:#fef3c7;color:#92400e}.status-Pending-Approval{background:#e2e8f0;color:#475569}@media(max-width:700px){.sales-orders-table th,.sales-orders-table td{padding:12px 10px}.sales-orders-table{font-size:13px}}</style>{% endblock %}
-{% block content %}<div class="sales-orders-page"><section class="sales-entry-hero"><div><span class="sales-entry-kicker">Customer Order Desk</span><h1>Sales Orders</h1><p>Record incoming customer purchase orders, approve them, and use them in Sales Entry.</p></div><a class="btn-save" href="/sales-orders/add"><i class="bi bi-plus-lg"></i> New Sales Order</a></section><form class="sales-orders-filter" method="get"><label>From Date<input type="date" name="from_date" value="{{ from_date }}"></label><label>To Date<input type="date" name="to_date" value="{{ to_date }}"></label><button class="btn-save" type="submit"><i class="bi bi-search"></i> Search</button></form><section class="sales-orders-panel"><div class="sales-orders-title"><span>Incoming Customer POs</span><h2>Sales Order Register</h2></div><div style="overflow:auto"><table class="sales-orders-table"><thead><tr><th>Sales Order</th><th>Date</th><th>Customer</th><th>Customer PO</th><th>Approval</th><th>Total</th></tr></thead><tbody>{% for order in orders %}<tr><td class="sales-order-number">{{ order.order_number }}</td><td>{{ order.order_date }}</td><td>{{ order.customer_name }}</td><td>{{ order.customer_po_number or '-' }}</td><td><span class="order-status status-{{ order.status|replace(' ','-') }}">{{ order.status }}</span></td><td>&#8377; {{ '%.2f'|format(order.total_amount or 0) }}</td></tr>{% else %}<tr><td colspan="6">No sales orders for the selected dates.</td></tr>{% endfor %}</tbody></table></div></section></div>{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/sales_orders.css">
+{% endblock %}
+
+{% block content %}
+<div class="sales-orders-page">
+    <section class="sales-orders-hero">
+        <div>
+            <span class="sales-orders-kicker">Customer Order Desk</span>
+            <h1>Sales Orders</h1>
+            <p>Track incoming customer purchase orders, approvals and delivery commitments in one focused workspace.</p>
+        </div>
+        <a class="btn-add-sales-order" href="/sales-orders/add">
+            <i class="bi bi-plus-lg"></i>
+            <span>New Sales Order</span>
+        </a>
+    </section>
+
+    <section class="sales-orders-summary">
+        <article class="sales-orders-summary-tile">
+            <div class="sales-orders-summary-icon icon-blue"><i class="bi bi-clipboard-check"></i></div>
+            <div><span>Total Orders</span><strong>{{ order_count or 0 }}</strong></div>
+        </article>
+        <article class="sales-orders-summary-tile">
+            <div class="sales-orders-summary-icon icon-green"><i class="bi bi-currency-rupee"></i></div>
+            <div><span>Order Value</span><strong>&#8377; {{ "%.2f"|format(order_amount or 0) }}</strong></div>
+        </article>
+        <article class="sales-orders-summary-tile">
+            <div class="sales-orders-summary-icon icon-gold"><i class="bi bi-hourglass-split"></i></div>
+            <div><span>Pending Approval</span><strong>{{ pending_count or 0 }}</strong></div>
+        </article>
+        <article class="sales-orders-summary-tile">
+            <div class="sales-orders-summary-icon icon-pink"><i class="bi bi-patch-check"></i></div>
+            <div><span>Approved</span><strong>{{ approved_count or 0 }}</strong></div>
+        </article>
+    </section>
+
+    <section class="sales-orders-filter-panel">
+        <form class="sales-orders-filter-form" method="get" action="/sales-orders">
+            <div class="sales-orders-filter-field">
+                <label for="sales-order-from-date">From Date</label>
+                <div class="sales-orders-input-shell"><i class="bi bi-calendar3"></i><input id="sales-order-from-date" type="date" name="from_date" value="{{ from_date }}"></div>
+            </div>
+            <div class="sales-orders-filter-field">
+                <label for="sales-order-to-date">To Date</label>
+                <div class="sales-orders-input-shell"><i class="bi bi-calendar3"></i><input id="sales-order-to-date" type="date" name="to_date" value="{{ to_date }}"></div>
+            </div>
+            <button class="btn-sales-orders-search" type="submit"><i class="bi bi-search"></i><span>Search</span></button>
+            <a class="btn-sales-orders-reset" href="/sales-orders"><i class="bi bi-arrow-counterclockwise"></i><span>Reset</span></a>
+        </form>
+    </section>
+
+    <section class="sales-orders-panel">
+        <div class="sales-orders-panel-header">
+            <div><span class="sales-orders-panel-label">Incoming Customer POs</span><h2>Sales Order Register</h2></div>
+            <span class="sales-orders-record-count">{{ order_count or 0 }} Records</span>
+        </div>
+        <div class="sales-orders-table-wrap">
+            <table class="sales-orders-table">
+                <thead><tr><th>Sales Order</th><th>Date</th><th>Customer</th><th>Customer PO</th><th>Approval</th><th>Total</th></tr></thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><span class="sales-order-number-pill">{{ order.order_number }}</span></td>
+                        <td>{{ order.order_date }}</td>
+                        <td><div class="sales-orders-customer-cell"><span class="sales-orders-customer-avatar">{{ order.customer_name[:1]|upper if order.customer_name else "C" }}</span><strong>{{ order.customer_name or "Customer not set" }}</strong></div></td>
+                        <td>{{ order.customer_po_number or "—" }}</td>
+                        <td><span class="sales-order-status status-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span></td>
+                        <td class="sales-orders-amount-cell">&#8377; {{ "%.2f"|format(order.total_amount or 0) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6"><div class="sales-orders-empty-state"><i class="bi bi-clipboard-x"></i><strong>No sales orders found</strong><span>Try changing the date range or create your first customer sales order.</span><a href="/sales-orders/add">Create Sales Order</a></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

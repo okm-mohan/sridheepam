@@ -3444,7 +3444,17 @@ def sales_orders(request: Request, from_date: str = "", to_date: str = ""):
         """), {"from_date": from_date, "to_date": to_date}).mappings().all()
     finally:
         db.close()
-    return templates.TemplateResponse(request=request, name="sales_orders.html", context={"request": request, "orders": orders, "from_date": from_date, "to_date": to_date})
+    order_rows = [dict(order) for order in orders]
+    return templates.TemplateResponse(request=request, name="sales_orders.html", context={
+        "request": request,
+        "orders": order_rows,
+        "from_date": from_date,
+        "to_date": to_date,
+        "order_count": len(order_rows),
+        "order_amount": sum(float(order.get("total_amount") or 0) for order in order_rows),
+        "pending_count": sum(order.get("status") == "Pending Approval" for order in order_rows),
+        "approved_count": sum(order.get("status") == "Approved" for order in order_rows),
+    })
 
 
 @app.get("/sales-orders/add")
